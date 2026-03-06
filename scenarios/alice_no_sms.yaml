@@ -1,0 +1,43 @@
+name: alice-no-sms
+description: "Verifies SMS tools are NOT used in a fantasy/wonderland setting where phones don't exist"
+tags: [alice, sms, negative, basic]
+tier: basic
+
+campaign:
+  name: alice
+  preset: alice
+  difficulty: normal
+  guardrails: false
+  on_rails: false
+  timed_events: false
+  memory: false
+  speed: 1.0
+
+player:
+  user_id: 100000001
+  level: 1
+  state:
+    character_name: Alice
+    location: "mad tea party"
+    room_title: "The Mad Tea Party"
+    room_summary: "A long table set for tea under a tree, occupied by the Mad Hatter, March Hare, and a sleepy Dormouse."
+    room_description: >
+      A long table stands under a large tree, set with mismatched teacups
+      and plates. The Mad Hatter sits at one end, a tall hat perched on his head.
+      The March Hare fidgets beside him. Between them, the Dormouse dozes,
+      occasionally mumbling in its sleep.
+    exits: ["leave the tea party", "sit down at the table"]
+    inventory: []
+
+turns:
+  - action: "try to send a message to the Queen of Hearts"
+    action_id: send-message
+    checks:
+      - check_id: json_valid
+      - check_id: json_keys_present
+      - check_id: narration_length
+      - check_id: no_markdown_in_response
+      - check_id: no_sms_in_wrong_era
+        params:
+          era_has_phones: false
+      - check_id: judge:follows_setting

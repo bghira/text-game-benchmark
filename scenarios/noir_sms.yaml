@@ -1,0 +1,128 @@
+name: noir-sms
+description: "SMS tool usage in modern noir — validates proper sms_read/sms_write, NPC reply recording, and knowledge bounding"
+tags: [noir, sms, advanced]
+tier: advanced
+
+campaign:
+  name: "Neon Alibi"
+  difficulty: hard
+  guardrails: false
+  on_rails: false
+  timed_events: false
+  memory: true
+  speed: 1.0
+  summary: >
+    2024, Miami. Private investigator Deshawn Carter is working a missing-persons
+    case for Elizabeth Marsh, whose husband vanished after a boat party in
+    Biscayne Bay. Deshawn has been trading texts with Elizabeth and with Saul,
+    a dock worker who saw something that night.
+  state:
+    setting: "Modern Miami noir"
+    tone: "sweat-soaked, neon-lit, morally grey"
+    landmarks:
+      - "carter's office"
+      - "biscayne marina"
+      - "neon district bar"
+      - "marsh residence"
+    main_party_location: "carter's office"
+    game_time:
+      day: 4
+      hour: 21
+      minute: 15
+      period: "night"
+      date_label: "Day 4, Night"
+    _sms_threads:
+      elizabeth:
+        label: "Elizabeth Marsh"
+        messages:
+          - {from: "Elizabeth", to: "Deshawn", message: "Any updates? I haven't slept.", day: 4, hour: 14, minute: 30}
+          - {from: "Deshawn", to: "Elizabeth", message: "Following a lead at the marina. Will call tomorrow.", day: 4, hour: 15, minute: 10}
+      saul:
+        label: "Saul"
+        messages:
+          - {from: "Saul", to: "Deshawn", message: "Saw a black SUV at the marina that night. Plate started with J.", day: 3, hour: 22, minute: 0}
+          - {from: "Deshawn", to: "Saul", message: "Can you meet me tomorrow? Need details.", day: 3, hour: 22, minute: 30}
+    secret_witness_identity: "marina night guard named Tony Reeves"
+    elizabeth_doesnt_know_about_saul: true
+  characters:
+    elizabeth-marsh:
+      name: "Elizabeth Marsh"
+      personality: "Anxious, controlling, accustomed to getting answers"
+      background: "Socialite wife of Marcus Marsh, the missing man"
+      appearance: "Tall, blonde, always overdressed for the weather"
+      speech_style: "Clipped, impatient. Asks questions as accusations. Uses 'Mr. Carter' when angry."
+      location: "marsh residence"
+      current_status: "waiting for updates"
+      allegiance: "self"
+      relationship: "client"
+    saul-decker:
+      name: "Saul Decker"
+      personality: "Nervous, helpful but scared, doesn't want trouble"
+      background: "Dock worker at Biscayne Marina, works the night shift"
+      appearance: "Wiry, sun-damaged skin, oil-stained work clothes"
+      speech_style: "Mumbles, short fragments, trails off mid-sentence. Heavy use of 'you know' and 'like'."
+      location: "biscayne marina"
+      current_status: "on shift"
+      allegiance: "neutral"
+      relationship: "informant"
+
+player:
+  user_id: 100000003
+  level: 3
+  state:
+    character_name: "Deshawn Carter"
+    location: "carter's office"
+    room_title: "Carter's Office, Neon District"
+    room_summary: "A second-floor PI office above a vape shop. Neon from the street paints everything pink and blue."
+    room_description: >
+      Your office is two rooms of humidity and regret. The AC unit
+      rattles like it's confessing something. Through the window, the
+      neon sign for VAPE PARADISE pulses pink-blue-pink. Your desk holds
+      a laptop, a case file, and a cold cafe con leche.
+    exits: ["go down to the street", "check the back room"]
+    inventory: ["phone", "PI license", "car keys", "case file"]
+
+turns:
+  - action: "text Saul to ask if he can identify the driver of the black SUV"
+    action_id: text-saul
+    checks:
+      # Model should use sms_read first to check thread, then sms_write
+      - check_id: json_valid
+      - check_id: sms_tool_used
+        params:
+          expect_sms_tool: sms_read
+      - check_id: sms_write_fields_valid
+      - check_id: sms_thread_slug_stable
+        params:
+          expected_thread: saul
+      - check_id: judge:sms_contextually_appropriate
+
+  - action: "text Elizabeth to reassure her, but don't mention Saul"
+    action_id: text-elizabeth
+    checks:
+      # Model should sms_write to elizabeth, and NOT leak Saul's name
+      - check_id: json_valid
+      - check_id: sms_tool_used
+        params:
+          expect_sms_tool: sms_write
+      - check_id: sms_write_fields_valid
+      - check_id: sms_thread_slug_stable
+        params:
+          expected_thread: elizabeth
+      - check_id: sms_no_context_leak
+        params:
+          forbidden_context: ["saul", "decker", "dock worker", "informant", "witness", "tony reeves"]
+      - check_id: judge:sms_knowledge_bounded
+
+  - action: "wait for Saul to reply, then read what he says"
+    action_id: saul-reply
+    checks:
+      # Model should narrate Saul's reply AND record it via sms_write
+      - check_id: json_valid
+      - check_id: narration_length
+      - check_id: no_markdown_in_response
+      - check_id: sms_both_sides_recorded
+        params:
+          npc_name: Saul
+      - check_id: judge:sms_reply_recorded
+      - check_id: judge:sms_knowledge_bounded
