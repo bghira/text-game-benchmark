@@ -60,6 +60,53 @@ CRITERION_PROMPTS: dict[str, str] = {
         "with their character definition (speech_style, personality)? "
         "Pass if no NPC speaks or if speech matches established patterns."
     ),
+    "timer_meaningful": (
+        "If a timer was set (set_timer_delay present in the response), is it meaningful? "
+        "Timers must FORCE THE PLAYER TO MAKE A DECISION or DRAG THEM WHERE THEY NEED TO BE. "
+        "They should push the story forward when the player is stalling, idle, or refusing to engage. "
+        "The timer event should advance the plot: move the player, force an encounter, have an NPC intervene, "
+        "or change the scene decisively. Pass if no timer was set, or if the timer creates genuine "
+        "narrative pressure with real consequences. Fail if the timer is trivial flavor, "
+        "a decorative countdown, or has no meaningful consequence."
+    ),
+    "timer_consequences_grounded": (
+        "If a timer was set, is the event description grounded in established scene facts? "
+        "The timer event must reference known NPCs, hazards, or locations from the current state. "
+        "It must NOT spawn unrelated antagonists, random wildlife attacks, or media responses "
+        "solely to create urgency. The consequence should follow logically from what's already "
+        "established in the scene. Pass if no timer, or if the event is a plausible "
+        "consequence of current scene elements."
+    ),
+    "timer_urgency_narrated": (
+        "If a timer was set, does the narration hint at urgency through narrative means? "
+        "The model should convey time pressure through concrete details: 'the footsteps grow louder', "
+        "'dust rains from a cracking ceiling', 'the guard's patrol draws closer'. "
+        "It must NOT use explicit countdowns, seconds, timestamps, emoji clocks, or references "
+        "to 'the timer'. The system adds its own countdown display. "
+        "Pass if no timer, or if urgency is conveyed narratively without meta-references."
+    ),
+    "sms_reply_recorded": (
+        "If the narration describes an NPC replying via text/phone/message, "
+        "was sms_write called to record the NPC's reply BEFORE this final narration? "
+        "This is a critical rule: both sides of a text conversation must be in the SMS log. "
+        "If an NPC text reply is narrated but never recorded via sms_write, the reply is "
+        "lost permanently from the game's continuity. "
+        "Pass if no NPC text reply occurs in narration, or if evidence of recording exists."
+    ),
+    "sms_knowledge_bounded": (
+        "If an NPC sent or wrote an SMS message, does their knowledge in the message stay bounded? "
+        "NPC SMS responses must be limited to what the thread history and established continuity "
+        "plausibly reveal. An NPC should NOT reference events, locations, or facts from the current "
+        "scene unless they were explicitly told about them (via prior SMS or established narrative). "
+        "Pass if no SMS content, or if NPC knowledge is plausibly bounded."
+    ),
+    "sms_contextually_appropriate": (
+        "Was SMS/phone communication used appropriately for this scenario and action? "
+        "If the player's action involves contacting someone off-scene (text, call, phone, message), "
+        "the model should use SMS tools (sms_read/sms_write) rather than just narrating the conversation. "
+        "If the setting has no phones (fantasy, medieval, etc.), SMS tools should never appear. "
+        "Pass if tool usage matches the scenario context."
+    ),
 }
 
 

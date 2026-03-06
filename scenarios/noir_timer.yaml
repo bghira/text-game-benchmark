@@ -1,0 +1,101 @@
+name: noir-timer
+description: "Timer usage in a tense noir scene — validates timers are meaningful, grounded, and narrated without countdown leaks"
+tags: [noir, timer, advanced]
+tier: advanced
+
+campaign:
+  name: "Midnight on Vine"
+  difficulty: hard
+  guardrails: false
+  on_rails: false
+  timed_events: true
+  memory: false
+  speed: 1.0
+  summary: >
+    1947, Los Angeles. Private detective Jack Mallory is trapped in a warehouse
+    on the docks, cornered by two of Sal Vanucci's enforcers. The back door
+    is chained, the front is covered. A kerosene lamp dangles from a beam,
+    swaying in the draft.
+  state:
+    setting: "1940s Los Angeles noir"
+    tone: "hard-boiled, cynical, atmospheric"
+    landmarks:
+      - "dock warehouse"
+      - "kerosene lamp"
+      - "loading bay"
+      - "back alley"
+    main_party_location: "dock warehouse"
+    game_time:
+      day: 3
+      hour: 23
+      minute: 45
+      period: "night"
+      date_label: "Day 3, Night"
+    sal_enforcers_position: "covering the front entrance"
+    kerosene_lamp: "swaying from ceiling beam"
+  characters:
+    sal-vanucci:
+      name: "Sal Vanucci"
+      personality: "Cold, methodical, patient — treats violence as bookkeeping"
+      background: "Mid-level enforcer for the Marchetti family, runs the dock operations"
+      appearance: "Stocky, pomade-slicked hair, pinstripe suit that's seen a few dock nights"
+      speech_style: "Flat, quiet, never raises his voice. Speaks in short declaratives. Calls everyone 'friend'."
+      location: "outside the warehouse front"
+      current_status: "waiting with two men"
+      allegiance: "marchetti family"
+      relationship: "antagonist"
+
+player:
+  user_id: 100000002
+  level: 4
+  state:
+    character_name: "Jack Mallory"
+    location: "dock warehouse"
+    room_title: "Warehouse Interior, Docks"
+    room_summary: "A dark warehouse filled with crates. Kerosene lamp swings overhead. Front door is covered by enforcers."
+    room_description: >
+      The warehouse smells of salt and machine oil. Wooden crates are stacked
+      along the walls, shipping labels from a dozen ports. A kerosene lamp
+      sways from a ceiling beam, casting lurching shadows. Through the slats
+      of the front door, you catch the glow of a cigarette — one of Sal's boys.
+      The back door is chained from outside.
+    exits: ["front door (covered)", "back door (chained)", "climb to loading bay window"]
+    inventory: ["revolver", "PI license", "pocketknife", "half-empty flask"]
+
+turns:
+  - action: "try to find something to pry the chain off the back door"
+    action_id: pry-back-door
+    checks:
+      # The model should set a timer here — Sal's patience is running out
+      - check_id: json_valid
+      - check_id: json_keys_present
+      - check_id: json_types_correct
+      - check_id: narration_length
+      - check_id: no_markdown_in_response
+      - check_id: state_nested
+      # Timer structural checks
+      - check_id: timer_fields_valid
+        params:
+          expect_timer: true
+      - check_id: timer_no_countdown_in_narration
+      - check_id: timer_grounded
+      - check_id: timer_delay_appropriate
+        params:
+          expected_urgency: moderate
+      # Timer meaningfulness (judge)
+      - check_id: judge:timer_meaningful
+      - check_id: judge:timer_consequences_grounded
+      - check_id: judge:timer_urgency_narrated
+      - check_id: judge:follows_setting
+
+  - action: "look around calmly and examine the crates"
+    action_id: examine-crates
+    checks:
+      # This is a non-urgent action — shouldn't set ANOTHER timer
+      - check_id: json_valid
+      - check_id: narration_length
+      - check_id: narration_no_recap
+      - check_id: no_gratuitous_timer
+        params:
+          expect_no_timer: true
+      - check_id: judge:narration_is_terse

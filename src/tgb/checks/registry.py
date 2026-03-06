@@ -30,6 +30,21 @@ from tgb.checks.content import (
     check_scene_image_prompt_present,
     check_rulebook_adherent,
 )
+from tgb.checks.timer import (
+    check_timer_fields_valid,
+    check_timer_no_countdown_in_narration,
+    check_timer_grounded,
+    check_timer_delay_appropriate,
+    check_no_gratuitous_timer,
+)
+from tgb.checks.sms import (
+    check_sms_tool_used,
+    check_sms_write_fields_valid,
+    check_sms_both_sides_recorded,
+    check_sms_no_context_leak,
+    check_sms_thread_slug_stable,
+    check_no_sms_in_wrong_era,
+)
 
 from tgb.checks.base import CheckFn
 
@@ -56,6 +71,19 @@ CHECKS: dict[str, CheckFn] = {
     "player_agency_respected": check_player_agency_respected,
     "scene_image_prompt_present": check_scene_image_prompt_present,
     "rulebook_adherent": check_rulebook_adherent,
+    # Timer checks
+    "timer_fields_valid": check_timer_fields_valid,
+    "timer_no_countdown_in_narration": check_timer_no_countdown_in_narration,
+    "timer_grounded": check_timer_grounded,
+    "timer_delay_appropriate": check_timer_delay_appropriate,
+    "no_gratuitous_timer": check_no_gratuitous_timer,
+    # SMS checks
+    "sms_tool_used": check_sms_tool_used,
+    "sms_write_fields_valid": check_sms_write_fields_valid,
+    "sms_both_sides_recorded": check_sms_both_sides_recorded,
+    "sms_no_context_leak": check_sms_no_context_leak,
+    "sms_thread_slug_stable": check_sms_thread_slug_stable,
+    "no_sms_in_wrong_era": check_no_sms_in_wrong_era,
 }
 
 
