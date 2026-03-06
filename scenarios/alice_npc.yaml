@@ -1,0 +1,56 @@
+name: alice-npc
+description: "Two-turn NPC interaction — tests slug validity and immutable field preservation"
+tags: [alice, npc, intermediate]
+tier: intermediate
+
+campaign:
+  name: alice
+  preset: alice
+  difficulty: normal
+  guardrails: false
+  on_rails: false
+  timed_events: false
+  memory: false
+  speed: 1.0
+  state:
+    main_party_location: "mad tea party"
+
+player:
+  user_id: 100000001
+  level: 2
+  state:
+    character_name: Alice
+    location: "mad tea party"
+    room_title: "The Mad Tea Party"
+    room_summary: "A long table set for tea under a tree, occupied by the Mad Hatter, March Hare, and a sleepy Dormouse."
+    room_description: >
+      A long table stands under a large tree, set with mismatched teacups
+      and plates. The Mad Hatter sits at one end, a tall hat perched on his head.
+      The March Hare fidgets beside him. Between them, the Dormouse dozes,
+      occasionally mumbling in its sleep.
+    exits: ["leave the tea party", "sit down at the table"]
+    inventory: []
+
+turns:
+  - action: "sit down at the table and greet the Mad Hatter"
+    action_id: greet-hatter
+    checks:
+      - check_id: json_valid
+      - check_id: json_keys_present
+      - check_id: json_types_correct
+      - check_id: narration_length
+      - check_id: no_markdown_in_response
+      - check_id: npc_slug_valid
+      - check_id: judge:npc_speech_consistent
+      - check_id: judge:follows_setting
+
+  - action: "ask the Mad Hatter about the time"
+    action_id: ask-time
+    checks:
+      - check_id: json_valid
+      - check_id: json_keys_present
+      - check_id: narration_length
+      - check_id: narration_no_recap
+      - check_id: npc_slug_valid
+      - check_id: npc_immutable_preserved
+      - check_id: judge:npc_speech_consistent

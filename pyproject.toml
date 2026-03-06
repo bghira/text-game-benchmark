@@ -1,0 +1,21 @@
+[project]
+name = "text-game-benchmark"
+version = "0.1.0"
+requires-python = ">=3.10"
+dependencies = [
+    "text-game-engine",
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+
+[project.scripts]
+tgb = "tgb.cli:main"
+
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]

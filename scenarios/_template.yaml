@@ -1,0 +1,102 @@
+# Scenario Template — copy this file and fill in the fields
+# Remove comments when done
+
+name: my-scenario                    # Unique slug identifier
+description: "Short description"     # One-line summary
+tags: [tag1, tag2]                   # For filtering scenarios
+tier: basic                          # smoke | basic | intermediate | advanced
+
+campaign:
+  name: "My Campaign"               # Campaign display name
+  # preset: alice                   # Optional: merge with PRESET_CAMPAIGNS data
+  difficulty: normal                 # story | easy | medium | normal | hard | impossible
+  guardrails: false                  # Strict deterministic parser mode
+  on_rails: false                    # Linear story mode
+  timed_events: false                # Enable timer system
+  memory: false                      # Enable memory_search tool
+  speed: 1.0                        # Time speed multiplier
+  summary: >                        # World summary / backstory
+    Describe the world and current situation here.
+  state:                             # Campaign world state (JSON-like)
+    setting: "Your Setting"
+    tone: "your tone description"
+    landmarks:
+      - "location 1"
+      - "location 2"
+    main_party_location: "starting location"
+    game_time:
+      day: 1
+      hour: 8
+      minute: 0
+      period: "morning"
+      date_label: "Day 1, Morning"
+  characters: {}                     # NPC roster (keyed by slug)
+  last_narration: ""                 # Previous narration text
+
+player:
+  user_id: 100000001                 # Fake Discord user ID
+  level: 1
+  state:
+    character_name: "Player Name"
+    location: "starting location"
+    room_title: "Starting Room"
+    room_summary: "One-line room summary"
+    room_description: >
+      Full room description for the starting location.
+    exits: ["exit 1", "exit 2"]
+    inventory: []
+
+# Optional: source material constraints
+# source_material:
+#   documents:
+#     - key: my-rulebook
+#       format: rulebook
+#       summary: "Description of source doc"
+#   constraints:
+#     - "No modern technology"
+#     - "Never break tone"
+
+# Optional: prior turn history for multi-turn context
+# recent_turns:
+#   - tag: "[TURN #1 | Day 1 08:00]"
+#     action: "previous action"
+#     narration: "previous narration"
+
+# Optional: other players in party
+# party:
+#   - discord_mention: "<@100000002>"
+#     character_name: "Other Player"
+#     location: "same location"
+#     party_status: "main_party"
+
+turns:
+  - action: "player's action text"
+    action_id: action-slug           # Unique per scenario
+    checks:
+      # Structural checks
+      - check_id: json_valid
+      - check_id: json_keys_present
+      - check_id: json_types_correct
+      - check_id: xp_range
+      - check_id: reasoning_present
+
+      # Narrative checks
+      - check_id: narration_length
+      - check_id: no_markdown_in_response
+      # - check_id: narration_no_recap    # Use on turn 2+
+      # - check_id: reasoning_concise
+
+      # State checks
+      - check_id: state_nested
+      # - check_id: state_null_prune
+      #   params:
+      #     expect_pruned: ["some.key"]
+
+      # Location checks (when movement expected)
+      # - check_id: location_coherent
+      #   params:
+      #     expect_move: true
+
+      # Judge checks (skipped with --no-judge)
+      # - check_id: judge:narration_is_terse
+      # - check_id: judge:follows_setting

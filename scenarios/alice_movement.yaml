@@ -1,0 +1,59 @@
+name: alice-movement
+description: "Two-turn room transition coherence test"
+tags: [alice, movement, intermediate]
+tier: intermediate
+
+campaign:
+  name: alice
+  preset: alice
+  difficulty: normal
+  guardrails: false
+  on_rails: false
+  timed_events: false
+  memory: false
+  speed: 1.0
+
+player:
+  user_id: 100000001
+  level: 1
+  state:
+    character_name: Alice
+    location: riverbank
+    room_title: "A Riverbank, Afternoon"
+    room_summary: "A sunny riverbank where Alice grows drowsy as a White Rabbit hurries past."
+    room_description: >
+      You are on a grassy riverbank beside a slow, glittering stream.
+      The day is warm and lazy, the air humming with insects.
+      A book without pictures lies nearby.
+      In the corner of your eye, a White Rabbit in a waistcoat scurries past,
+      muttering about being late.
+    exits: ["follow the white rabbit", "stroll along the riverbank"]
+    inventory: []
+
+turns:
+  - action: "follow the white rabbit"
+    action_id: follow-rabbit
+    checks:
+      - check_id: json_valid
+      - check_id: json_keys_present
+      - check_id: json_types_correct
+      - check_id: location_coherent
+        params:
+          expect_move: true
+      - check_id: scene_image_prompt_present
+        params:
+          expect_visual_change: true
+      - check_id: judge:movement_narrated
+
+  - action: "look around carefully"
+    action_id: look-around
+    checks:
+      - check_id: json_valid
+      - check_id: json_keys_present
+      - check_id: narration_length
+      - check_id: narration_no_recap
+      - check_id: no_inventory_in_narration
+      - check_id: no_markdown_in_response
+      - check_id: reasoning_concise
+      - check_id: judge:narration_is_terse
+      - check_id: judge:follows_setting

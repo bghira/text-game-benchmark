@@ -1,0 +1,97 @@
+name: noir-custom
+description: "Custom noir detective scenario with source material constraints — tests rulebook_adherent and state_null_prune"
+tags: [noir, custom, advanced]
+tier: advanced
+
+campaign:
+  name: "Midnight on Vine"
+  difficulty: hard
+  guardrails: false
+  on_rails: false
+  timed_events: false
+  memory: false
+  speed: 1.0
+  summary: >
+    1947, Los Angeles. Private detective Jack Mallory investigates the
+    disappearance of a starlet from the Vine Street theater district.
+    The trail leads through smoky jazz clubs, corrupt studio lots, and
+    the sunlit mansions of Hollywood Hills. Nothing is what it seems.
+  state:
+    setting: "1940s Los Angeles noir"
+    tone: "hard-boiled, cynical, atmospheric"
+    landmarks:
+      - "vine street theater"
+      - "blue note jazz club"
+      - "paramount studio lot"
+      - "hollywood hills mansion"
+      - "mallory's office"
+    main_party_location: "mallory's office"
+    game_time:
+      day: 1
+      hour: 22
+      minute: 30
+      period: "night"
+      date_label: "Day 1, Night"
+    clue_planted: true
+    dame_visited: true
+  characters:
+    lena-marquez:
+      name: "Lena Marquez"
+      personality: "Sultry, guarded, surprisingly sharp beneath the glamour"
+      background: "Aspiring actress, roommate of the missing starlet"
+      appearance: "Dark curls, red lips, a sequined dress that's seen better nights"
+      speech_style: "Breathy whisper that drops to a flat Midwest accent when she forgets herself. Short sentences. Never explains more than she has to."
+      location: "blue note jazz club"
+      current_status: "waiting at the bar, smoking"
+      allegiance: "self"
+      relationship: "client"
+
+player:
+  user_id: 100000002
+  level: 3
+  state:
+    character_name: "Jack Mallory"
+    location: "mallory's office"
+    room_title: "Mallory's Office, 10:30 PM"
+    room_summary: "A cramped PI office on the second floor above a pawnshop. Venetian blinds cast stripes across the desk."
+    room_description: >
+      Your office is a box of shadows and stale smoke. A desk, a chair,
+      a filing cabinet with a dent from that time with the Kowalski brothers.
+      Venetian blinds stripe the ceiling in amber from the street lamp below.
+      The phone sits silent. A half-empty bottle of rye keeps it company.
+    exits: ["go down to the street", "call the blue note"]
+    inventory: ["revolver", "PI license", "matchbook from the Blue Note"]
+
+source_material:
+  documents:
+    - key: noir-rulebook
+      format: rulebook
+      summary: "Setting rules for 1940s LA noir scenarios"
+  constraints:
+    - "No cell phones or modern technology"
+    - "No magic or supernatural elements"
+    - "Never break the noir tone with humor or camp"
+    - "Guns are last resort, not first option"
+
+turns:
+  - action: "head down to the street and hail a cab to the Blue Note"
+    action_id: go-blue-note
+    checks:
+      - check_id: json_valid
+      - check_id: json_keys_present
+      - check_id: json_types_correct
+      - check_id: location_coherent
+        params:
+          expect_move: true
+      - check_id: state_nested
+      - check_id: state_null_prune
+        params:
+          expect_pruned: ["dame_visited"]
+      - check_id: narration_length
+      - check_id: no_markdown_in_response
+      - check_id: rulebook_adherent
+      - check_id: scene_image_prompt_present
+        params:
+          expect_visual_change: true
+      - check_id: judge:follows_setting
+      - check_id: judge:movement_narrated
