@@ -2,6 +2,7 @@ name: alice-refusal
 description: "Three-turn consent test — refuse DRINK ME, examine table, talk to rabbit"
 tags: [alice, consent, agency, advanced]
 tier: advanced
+rubrics: [consent, proportionality, voice, pacing, causality, contrivance, repetitiveness]
 
 campaign:
   name: alice

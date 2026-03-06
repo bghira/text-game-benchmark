@@ -12,6 +12,7 @@ from typing import Any
 
 from tgb.checks.base import CheckResult
 from tgb.clients.ollama_client import TimingData
+from tgb.rubric import RubricScore
 
 
 @dataclass
@@ -21,6 +22,7 @@ class ActionResult:
     action_id: str
     action: str
     checks: list[CheckResult] = field(default_factory=list)
+    rubric_scores: list[RubricScore] = field(default_factory=list)
     timing: TimingData | None = None
     raw_response: str = ""
 
@@ -45,7 +47,7 @@ class ActionResult:
                 "eval_tokens_per_sec": self.timing.eval_tokens_per_sec,
                 "wall_clock_seconds": self.timing.wall_clock_seconds,
             }
-        return {
+        d: dict[str, Any] = {
             "action_id": self.action_id,
             "action": self.action,
             "checks": [
@@ -62,6 +64,9 @@ class ActionResult:
             "failed": self.failed,
             "total": self.total,
         }
+        if self.rubric_scores:
+            d["rubric_scores"] = [rs.to_dict() for rs in self.rubric_scores]
+        return d
 
 
 @dataclass
@@ -72,6 +77,7 @@ class ScenarioResult:
     model: str
     provider: str
     actions: list[ActionResult] = field(default_factory=list)
+    rubric_scores: list[RubricScore] = field(default_factory=list)  # scenario-scope scores
 
     @property
     def total_passed(self) -> int:
@@ -102,8 +108,56 @@ class ScenarioResult:
                     cats[check.category]["failed"] += 1
         return dict(cats)
 
+    def all_rubric_scores(self) -> list[RubricScore]:
+        """All rubric scores: per-turn + scenario-scope."""
+        scores = []
+        for action in self.actions:
+            scores.extend(action.rubric_scores)
+        scores.extend(self.rubric_scores)
+        return scores
+
+    def rubric_summary(self) -> dict[str, Any]:
+        """Aggregate rubric scores by category and rubric."""
+        all_scores = self.all_rubric_scores()
+        if not all_scores:
+            return {}
+        by_rubric: dict[str, dict[str, Any]] = {}
+        for rs in all_scores:
+            if rs.rubric_id not in by_rubric:
+                by_rubric[rs.rubric_id] = {
+                    "name": rs.rubric_name,
+                    "category": rs.category,
+                    "scope": rs.scope,
+                    "scores": [],
+                    "max_score": rs.max_score,
+                }
+            by_rubric[rs.rubric_id]["scores"].append(rs.score)
+            if rs.metric_name:
+                by_rubric[rs.rubric_id]["metric_name"] = rs.metric_name
+                by_rubric[rs.rubric_id]["metric_value"] = rs.metric_value
+
+        # Compute averages
+        summary: dict[str, Any] = {}
+        for rid, info in by_rubric.items():
+            scores_list = info["scores"]
+            valid = [s for s in scores_list if s > 0]
+            avg = round(sum(valid) / len(valid), 2) if valid else 0.0
+            entry: dict[str, Any] = {
+                "name": info["name"],
+                "category": info["category"],
+                "scope": info["scope"],
+                "mean_score": avg,
+                "max_score": info["max_score"],
+                "n_graded": len(valid),
+            }
+            if "metric_name" in info:
+                entry["metric_name"] = info["metric_name"]
+                entry["metric_value"] = info["metric_value"]
+            summary[rid] = entry
+        return summary
+
     def to_dict(self) -> dict[str, Any]:
-        return {
+        d: dict[str, Any] = {
             "scenario": self.scenario,
             "model": self.model,
             "provider": self.provider,
@@ -116,6 +170,12 @@ class ScenarioResult:
                 "by_category": self.by_category(),
             },
         }
+        rubric_sum = self.rubric_summary()
+        if rubric_sum:
+            d["summary"]["rubrics"] = rubric_sum
+        if self.rubric_scores:
+            d["rubric_scores"] = [rs.to_dict() for rs in self.rubric_scores]
+        return d
 
 
 @dataclass
@@ -187,6 +247,17 @@ def print_summary(run: BenchmarkRun, verbose: bool = False) -> None:
             status = "PASS" if counts["failed"] == 0 else "FAIL"
             print(f"  [{status}] {cat}: {counts['passed']}/{counts['total']}")
 
+        # Rubric summary
+        rubric_sum = sr.rubric_summary()
+        if rubric_sum:
+            print(f"\n  Rubric Grades:")
+            for rid, info in sorted(rubric_sum.items()):
+                metric_str = ""
+                if info.get("metric_name"):
+                    metric_str = f" (sim={info['metric_value']:.3f})"
+                print(f"    {info['name']}: {info['mean_score']}/{info['max_score']}"
+                      f" [{info['category']}]{metric_str}")
+
         if verbose:
             for action in sr.actions:
                 print(f"\n  Action: {action.action_id} ({action.action})")
@@ -196,5 +267,21 @@ def print_summary(run: BenchmarkRun, verbose: bool = False) -> None:
                 for check in action.checks:
                     icon = "PASS" if check.passed else "FAIL"
                     print(f"    [{icon}] {check.check_id}: {check.detail}")
+                for rs in action.rubric_scores:
+                    metric_str = ""
+                    if rs.metric_name:
+                        metric_str = f" (sim={rs.metric_value:.3f})"
+                    print(f"    [RUBRIC] {rs.rubric_id}: {rs.score}/{rs.max_score}"
+                          f" - {rs.reason}{metric_str}")
+
+            # Scenario-scope rubric scores
+            if sr.rubric_scores:
+                print(f"\n  Scenario Rubric Grades:")
+                for rs in sr.rubric_scores:
+                    metric_str = ""
+                    if rs.metric_name:
+                        metric_str = f" (sim={rs.metric_value:.3f})"
+                    print(f"    [RUBRIC] {rs.rubric_id}: {rs.score}/{rs.max_score}"
+                          f" - {rs.reason}{metric_str}")
 
     print(f"\n{'='*60}")

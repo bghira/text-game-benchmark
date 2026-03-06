@@ -2,6 +2,7 @@ name: alice-movement
 description: "Two-turn room transition coherence test"
 tags: [alice, movement, intermediate]
 tier: intermediate
+rubrics: [voice, pacing, causality, repetitiveness]
 
 campaign:
   name: alice

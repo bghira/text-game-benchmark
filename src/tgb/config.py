@@ -86,6 +86,7 @@ class Scenario:
     source_material: SourceMaterial | None = None
     recent_turns: list[dict[str, Any]] = field(default_factory=list)
     party: list[dict[str, Any]] = field(default_factory=list)
+    rubrics: list[str] = field(default_factory=list)  # rubric IDs to apply (empty = all)
 
 
 def _get_preset_data(preset_name: str) -> dict[str, Any]:
@@ -233,6 +234,8 @@ def load_scenario(path: str | Path) -> Scenario:
     source_material = _build_source_material(raw.get("source_material"))
     recent_turns = raw.get("recent_turns", [])
     party = raw.get("party", [])
+    rubrics_raw = raw.get("rubrics", [])
+    rubric_ids = [str(r) for r in rubrics_raw] if rubrics_raw else []
 
     return Scenario(
         name=name,
@@ -245,6 +248,7 @@ def load_scenario(path: str | Path) -> Scenario:
         source_material=source_material,
         recent_turns=recent_turns,
         party=party,
+        rubrics=rubric_ids,
     )
 
 

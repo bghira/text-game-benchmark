@@ -2,6 +2,7 @@ name: alice-npc
 description: "Two-turn NPC interaction — tests slug validity and immutable field preservation"
 tags: [alice, npc, intermediate]
 tier: intermediate
+rubrics: [npc-autonomy, voice, pacing, causality, repetitiveness]
 
 campaign:
   name: alice

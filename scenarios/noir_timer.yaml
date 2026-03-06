@@ -2,6 +2,7 @@ name: noir-timer
 description: "Timer usage in a tense noir scene — validates timers are meaningful, grounded, and narrated without countdown leaks"
 tags: [noir, timer, advanced]
 tier: advanced
+rubrics: [voice, pacing, causality, proportionality, contrivance, repetitiveness]
 
 campaign:
   name: "Midnight on Vine"

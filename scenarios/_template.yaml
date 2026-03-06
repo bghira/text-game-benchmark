@@ -6,6 +6,9 @@ description: "Short description"     # One-line summary
 tags: [tag1, tag2]                   # For filtering scenarios
 tier: basic                          # smoke | basic | intermediate | advanced
 
+# Optional: which rubrics to grade (omit for all, --list-rubrics to see available)
+# rubrics: [voice, pacing, causality, repetitiveness]
+
 campaign:
   name: "My Campaign"               # Campaign display name
   # preset: alice                   # Optional: merge with PRESET_CAMPAIGNS data

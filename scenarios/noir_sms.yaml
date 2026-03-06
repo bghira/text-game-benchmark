@@ -2,6 +2,7 @@ name: noir-sms
 description: "SMS tool usage in modern noir — validates proper sms_read/sms_write, NPC reply recording, and knowledge bounding"
 tags: [noir, sms, advanced]
 tier: advanced
+rubrics: [voice, pacing, causality, proportionality, npc-autonomy, repetitiveness]
 
 campaign:
   name: "Neon Alibi"

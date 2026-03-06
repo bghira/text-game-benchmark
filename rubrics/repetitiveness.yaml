@@ -1,0 +1,76 @@
+id: repetitiveness
+name: "Lexical & Structural Repetitiveness"
+category: craft
+scope: scenario
+computed_metric: cosine_similarity
+description: >
+  Across all turns in this scenario, does the model's narration vary
+  or does it recycle language? This rubric is graded ONCE at the end
+  of a scenario using all collected narrations.
+
+  A computed TF-IDF cosine similarity score is also attached. Higher
+  similarity = more repetition = lower grade.
+
+  When grading, you are looking at these specific dimensions across
+  the turn narrations provided:
+  1. Vocabulary overlap: are the same adjectives, verbs, and nouns
+     reused across turns?
+  2. Structural patterns: do turns start the same way, follow the
+     same sentence template, or use the same paragraph shape?
+  3. Descriptive recycling: are rooms, NPCs, or events described
+     with the same phrases they were described with in prior turns?
+  4. Sentence openers: does each turn's narration begin with the
+     same construction (e.g. always "You...", always "The...")?
+levels:
+  5: >
+    ALL of these markers are present across the turn narrations:
+    (a) Vocabulary: no distinctive adjective, adverb, or verb appears
+        more than once across turns (common words like "the", "you",
+        "is" excluded). Each turn uses fresh descriptive language.
+    (b) Sentence openers: the first word or phrase of each turn's
+        narration is different. No two turns start with the same
+        construction (e.g. "You walk", "You see", "You notice"
+        would count as the same "You + verb" pattern).
+    (c) NPC/location references: when the same NPC or location appears
+        in multiple turns, they are described with different words
+        each time (not "the dark corridor" twice).
+    (d) Paragraph shape: turns vary in structure — some are dialogue-
+        heavy, some are descriptive, some are event-focused. The model
+        doesn't use the same narrative template for every turn.
+  4: >
+    Narration mostly varies with ONE of these echoes:
+    (a) One distinctive word or phrase appears in two turns (e.g. the
+        same unusual adjective, the same metaphor).
+    (b) Two turns share the same sentence opener pattern ("You" + verb)
+        but the rest of the narration is distinct.
+    (c) A location or NPC is described with one recycled phrase but
+        the rest of their description is new.
+  3: >
+    Moderate repetition. TWO OR MORE of these:
+    (a) A distinctive phrase or descriptive construction appears in 3+
+        turns (e.g. "shadows dance across", "the air is thick with").
+    (b) More than half the turns start with the same sentence pattern.
+    (c) When the same setting element reappears, its description is
+        substantially recycled (more than half the words are the same).
+    (d) All turns follow the same structural template: description →
+        NPC reaction → environmental detail (or similar fixed pattern).
+  2: >
+    Clearly repetitive. At least ONE of these:
+    (a) Multiple full phrases (3+ words) are reused verbatim across
+        turns.
+    (b) Every turn starts with the same word or construction.
+    (c) An NPC or location is described with near-identical language
+        across all appearances.
+    (d) The narrative structure is templated: every turn follows the
+        exact same shape (same number of paragraphs, same type of
+        content in each paragraph).
+  1: >
+    Highly repetitive. At least ONE of these:
+    (a) Full sentences are recycled verbatim or near-verbatim across
+        turns.
+    (b) More than half the narration in a later turn could be
+        copy-pasted from an earlier turn.
+    (c) The model uses the same scene-setting paragraph (or close
+        variant) at the start of every turn.
+    (d) Removing duplicate content across turns would reduce total
+        narration word count by more than 30%.

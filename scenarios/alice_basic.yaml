@@ -2,6 +2,7 @@ name: alice-basic
 description: "Single-turn smoke test with Alice preset — validates JSON structure, types, ranges, narration length"
 tags: [alice, smoke, basic]
 tier: basic
+rubrics: [voice, pacing, causality]
 
 campaign:
   name: alice
