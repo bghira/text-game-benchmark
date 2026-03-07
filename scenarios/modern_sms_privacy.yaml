@@ -1,0 +1,169 @@
+name: modern-sms-privacy
+description: "Modern multi-player scenario testing SMS privacy enforcement — phone activity should be private, command lines stripped"
+tags: [modern, privacy, sms, multi-player, advanced]
+tier: advanced
+rubrics: [privacy-awareness, voice, npc-autonomy]
+
+campaign:
+  name: "The Informant"
+  difficulty: normal
+  guardrails: false
+  on_rails: false
+  timed_events: false
+  memory: false
+  speed: 1.0
+  multi_player: true
+  summary: >
+    Present day, Chicago. Two undercover agents — Marcus Cole and
+    Naomi Park — are investigating a money laundering ring operating
+    through a chain of laundromats. Marcus works the street angle;
+    Naomi handles digital forensics from a safe house. They communicate
+    via encrypted texts but must keep their phone activity private from
+    the targets they're surveilling.
+  state:
+    setting: "Present-day Chicago crime thriller"
+    tone: "tense, procedural, grounded"
+    landmarks:
+      - "Suds & Spin laundromat"
+      - "safe house apartment"
+      - "Marcus's car"
+      - "the diner across the street"
+    main_party_location: "the diner across the street"
+    game_time:
+      day: 3
+      hour: 14
+      minute: 30
+      period: "afternoon"
+      date_label: "Day 3, Afternoon"
+  characters:
+    tony-deluca:
+      name: "Tony DeLuca"
+      personality: "Jumpy, suspicious, chain-smoker, surprisingly loyal to his crew"
+      background: "Manager of the Suds & Spin, low-level money mover"
+      appearance: "Thin, early 40s, cheap suit, always checking over his shoulder"
+      speech_style: "Fast-talker, lots of 'look' and 'listen', drops his voice when nervous."
+      location: "Suds & Spin laundromat"
+      current_status: "counting cash in the back office"
+      allegiance: "the ring"
+      relationship: "target"
+    waitress-helen:
+      name: "Helen Kowalski"
+      personality: "Friendly, observant, no-nonsense"
+      background: "Waitress at the diner for 8 years, knows the regulars"
+      appearance: "Mid-50s, reading glasses on a chain, coffee pot always in hand"
+      speech_style: "Warm, direct. Calls everyone 'hon'. Remembers orders."
+      location: "the diner across the street"
+      current_status: "refilling coffee for the lunch crowd"
+      allegiance: "neutral"
+      relationship: "bystander"
+
+player:
+  user_id: 200000001
+  level: 2
+  state:
+    character_name: "Marcus Cole"
+    location: "the diner across the street"
+    room_title: "The Diner, 2:30 PM"
+    room_summary: "A greasy spoon diner across from the Suds & Spin. Good sightlines."
+    room_description: >
+      The diner smells of burnt coffee and griddle grease. A long counter
+      with red vinyl stools faces the window. From here you can see the
+      front of the Suds & Spin across the street. Helen works the counter.
+      A few regulars nurse their coffees.
+    exits: ["leave the diner", "go to the restroom", "cross the street to the laundromat"]
+    inventory: ["burner phone", "badge (hidden)", "notepad", "binoculars"]
+
+party:
+  - actor_id: "200000001"
+    discord_mention: "<@200000001>"
+    character_name: "Marcus Cole"
+    player_slug: "marcus-cole"
+    location: "the diner across the street"
+    is_actor: true
+    level: 2
+  - actor_id: "200000002"
+    discord_mention: "<@200000002>"
+    character_name: "Naomi Park"
+    player_slug: "naomi-park"
+    location: "safe house apartment"
+    is_actor: false
+    level: 2
+
+source_material:
+  documents:
+    - key: crime-rulebook
+      format: rulebook
+      summary: "Setting rules for modern crime investigation scenarios"
+  constraints:
+    - "No supernatural elements"
+    - "Characters must behave realistically under surveillance conditions"
+    - "Phone communications are always private unless explicitly shared aloud"
+    - "Maintain procedural accuracy for law enforcement"
+
+turns:
+  # Turn 1: Local action — ordering coffee in the diner
+  # Should be local (routine room activity)
+  - action: "order a black coffee from Helen and sit by the window"
+    action_id: order-coffee
+    turn_visibility_default: local
+    checks:
+      - check_id: json_valid
+      - check_id: json_keys_present
+      - check_id: narration_length
+      - check_id: visibility_fields_valid
+      - check_id: visibility_scope_present
+      - check_id: visibility_default_respected
+      - check_id: no_public_leak_in_private_turn
+      - check_id: judge:follows_setting
+
+  # Turn 2: SMS activity — texting Naomi about surveillance
+  # Should be PRIVATE (phone activity, engine auto-privates)
+  - action: "text Naomi: DeLuca just arrived. He's carrying a duffel bag. Watching from the diner."
+    action_id: text-naomi
+    turn_visibility_default: private
+    checks:
+      - check_id: json_valid
+      - check_id: json_keys_present
+      - check_id: narration_length
+      - check_id: visibility_fields_valid
+      - check_id: visibility_scope_present
+      - check_id: visibility_default_respected
+      - check_id: sms_not_in_narration
+      - check_id: sms_turn_private
+      - check_id: no_public_leak_in_private_turn
+      - check_id: judge:follows_setting
+
+  # Turn 3: Local action — watching the laundromat through the window
+  # Should be local (routine observation from current location)
+  - action: "use the binoculars to watch DeLuca through the diner window"
+    action_id: watch-deluca
+    turn_visibility_default: local
+    checks:
+      - check_id: json_valid
+      - check_id: json_keys_present
+      - check_id: narration_length
+      - check_id: narration_no_recap
+      - check_id: visibility_fields_valid
+      - check_id: visibility_scope_present
+      - check_id: visibility_default_respected
+      - check_id: no_public_leak_in_private_turn
+      - check_id: judge:follows_setting
+
+  # Turn 4: SMS activity — reading a text from Naomi
+  # Should be PRIVATE (phone activity)
+  - action: "I message Naomi: got any hits on the plate number I sent?"
+    action_id: message-naomi-plate
+    turn_visibility_default: private
+    checks:
+      - check_id: json_valid
+      - check_id: json_keys_present
+      - check_id: narration_length
+      - check_id: narration_no_recap
+      - check_id: visibility_fields_valid
+      - check_id: visibility_scope_present
+      - check_id: visibility_default_respected
+      - check_id: sms_not_in_narration
+      - check_id: sms_turn_private
+      - check_id: no_public_leak_in_private_turn
+      - check_id: npc_slug_valid
+      - check_id: judge:follows_setting

@@ -1,0 +1,103 @@
+id: subplot-followthrough
+name: "Subplot Follow-Through & Self-Consistency"
+category: subplot
+scope: scenario
+description: >
+  Across all turns, does the model follow through on narrative plans it
+  declared using the plot_plan, chapter_plan, and consequence_log tools?
+
+  This rubric is graded ONCE at the end of a scenario using the full
+  history of tool calls and narrations. You are checking whether the
+  model meets its own expectations — not whether the plans were good,
+  but whether the model did what it said it would do.
+
+  You have access to:
+  - All tool_call history (plot_plan, chapter_plan, consequence_log calls
+    with their full JSON payloads)
+  - All narration text across turns
+  - The final state of plot_threads, chapters, and consequences
+
+  For each declared plan, ask: "Did the model follow through on this,
+  and does the narration reflect it?" If the model declared a thread
+  with target_turns=5 and setup="rival appears", did a rival actually
+  appear in the narration within ~5 turns?
+
+  If no subplot tools were used in the scenario, score 5 (not applicable).
+levels:
+  5: >
+    ALL of these markers are present across the scenario:
+    (a) Every plot thread that was declared with a target_turns value
+        shows narration activity (events, dialogue, or consequences
+        mentioned in the narration text) within the declared turn window.
+        A thread with target_turns=3 created on turn 2 should show
+        relevant narration events by turn 5.
+    (b) Every plot thread that was resolved (status changed to "resolved")
+        has a resolution that matches its declared intended_payoff field.
+        The payoff described in the tool call actually happened in the
+        narration. Quote the intended_payoff and the narration passage
+        that fulfills it.
+    (c) Chapter scenes advance in the declared order — no scenes are
+        skipped, and each scene transition corresponds to a narrative
+        shift visible in the narration text (new location, new conflict,
+        new NPC interaction).
+    (d) Consequences that were added with expires_turns are either
+        resolved before expiry or their effects are visible in the
+        narration during their active window. A consequence with
+        trigger "guards are alerted" should affect narration in turns
+        where it's active.
+    (e) No plot threads are orphaned — every declared thread is either
+        resolved or still within its target_turns window at scenario end.
+  4: >
+    Follow-through is strong with ONE of these gaps:
+    (a) One plot thread's resolution narration is thematically related to
+        but does not precisely match the intended_payoff. The payoff
+        happened but in a slightly different form than declared.
+    (b) A consequence's effect is implied but not explicitly narrated —
+        the state reflects it but the narration doesn't describe it.
+    (c) One chapter scene transition happens without a clear narrative
+        marker — the scene changes but the narration doesn't signal
+        the shift.
+    (d) A plot thread is resolved 1-2 turns after its target_turns
+        deadline — close but not within the declared window.
+  3: >
+    Moderate follow-through gaps. TWO OR MORE of these:
+    (a) A plot thread's setup field describes an element (NPC, location,
+        event) that never appears in any narration text. The model
+        declared it would introduce something and didn't.
+    (b) A plot thread exceeds its target_turns by 3+ turns without
+        resolution. The model set its own deadline and missed it
+        significantly.
+    (c) A chapter has scenes declared but the narration doesn't reflect
+        distinct scene changes — the narrative reads as continuous
+        without the structural breaks the chapter plan promised.
+    (d) Multiple consequences are added but none are ever resolved or
+        referenced again in later narration — they're fire-and-forget.
+    (e) A resolved thread's resolution text in the tool call doesn't
+        correspond to anything in the narration — the model marked it
+        resolved without narrating the resolution.
+  2: >
+    Poor follow-through. At least ONE of these:
+    (a) More than half of declared plot threads are orphaned — they
+        exceeded their target_turns without resolution and without
+        any narration activity after creation.
+    (b) A plot thread's narration directly contradicts its setup or
+        intended_payoff. The model planned one thing and narrated
+        something incompatible.
+    (c) A chapter's scenes are declared but the narration proceeds in
+        a completely different order or skips most declared scenes.
+    (d) Consequences are added and resolved in the same turn repeatedly,
+        suggesting the model uses the tool mechanically without
+        meaningful narrative integration.
+  1: >
+    No meaningful follow-through. At least ONE of these:
+    (a) Plot threads are declared but have zero effect on narration —
+        the narration reads the same as it would without any plot_plan
+        calls. The tool is used but ignored.
+    (b) Every plot thread is orphaned or abandoned. None reach resolution.
+    (c) The model declares contradictory plans across turns — a thread's
+        setup changes meaning between calls, or a chapter's scene list
+        is completely rewritten without narrative justification.
+    (d) Tool calls are formulaic — the same structure/pattern repeated
+        with superficial variation, suggesting template completion
+        rather than narrative planning (e.g. every thread has
+        target_turns=5 and generic setup text).

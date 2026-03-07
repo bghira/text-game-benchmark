@@ -1,0 +1,179 @@
+name: noir-multiplayer-privacy
+description: "Multi-player noir scenario testing turn_visibility — private investigation, shared confrontation, secret discovery"
+tags: [noir, privacy, multi-player, advanced]
+tier: advanced
+rubrics: [privacy-awareness, voice, causality, npc-autonomy]
+
+campaign:
+  name: "Midnight on Vine"
+  difficulty: hard
+  guardrails: false
+  on_rails: false
+  timed_events: false
+  memory: false
+  speed: 1.0
+  multi_player: true
+  summary: >
+    1947, Los Angeles. Two private detectives — Jack Mallory and
+    Vivian Cross — are hired separately to investigate the disappearance
+    of starlet Ruby Delacroix from the Vine Street theater district.
+    Neither knows the other has been hired. The trail leads through
+    smoky jazz clubs, corrupt studio lots, and the sunlit mansions of
+    Hollywood Hills.
+  state:
+    setting: "1940s Los Angeles noir"
+    tone: "hard-boiled, cynical, atmospheric"
+    landmarks:
+      - "vine street theater"
+      - "blue note jazz club"
+      - "paramount studio lot"
+      - "hollywood hills mansion"
+      - "mallory's office"
+      - "cross's apartment"
+    main_party_location: "blue note jazz club"
+    game_time:
+      day: 2
+      hour: 21
+      minute: 0
+      period: "night"
+      date_label: "Day 2, Night"
+  characters:
+    lena-marquez:
+      name: "Lena Marquez"
+      personality: "Sultry, guarded, surprisingly sharp beneath the glamour"
+      background: "Aspiring actress, roommate of the missing starlet"
+      appearance: "Dark curls, red lips, a sequined dress that's seen better nights"
+      speech_style: "Breathy whisper that drops to a flat Midwest accent when she forgets herself. Short sentences. Never explains more than she has to."
+      location: "blue note jazz club"
+      current_status: "waiting at the bar, smoking"
+      allegiance: "self"
+      relationship: "client"
+    bartender-sal:
+      name: "Sal Benedetto"
+      personality: "Observant, tight-lipped, loyal to regulars"
+      background: "Bartender at the Blue Note for 15 years, knows everyone"
+      appearance: "Thick forearms, slicked-back hair, a towel perpetually over one shoulder"
+      speech_style: "Low, measured. Never raises his voice. Answers questions with questions. Wipes the bar while talking."
+      location: "blue note jazz club"
+      current_status: "behind the bar, polishing glasses"
+      allegiance: "neutral"
+      relationship: "informant"
+
+player:
+  user_id: 100000002
+  level: 3
+  state:
+    character_name: "Jack Mallory"
+    location: "blue note jazz club"
+    room_title: "The Blue Note Jazz Club, 9 PM"
+    room_summary: "A smoky jazz club on Vine Street. A trio plays on a small stage. The bar is long and dark."
+    room_description: >
+      The Blue Note is all shadows and brass. A trio plays something slow
+      on the small stage. Cigarette smoke curls under the lights.
+      The bar runs the length of the far wall, presided over by Sal,
+      who watches everything and says nothing.
+      Lena Marquez sits alone at the far end of the bar.
+    exits: ["leave the club", "approach the bar", "approach Lena"]
+    inventory: ["revolver", "PI license", "notepad"]
+
+party:
+  - actor_id: "100000002"
+    discord_mention: "<@100000002>"
+    character_name: "Jack Mallory"
+    player_slug: "jack-mallory"
+    location: "blue note jazz club"
+    is_actor: true
+    level: 3
+  - actor_id: "100000003"
+    discord_mention: "<@100000003>"
+    character_name: "Vivian Cross"
+    player_slug: "vivian-cross"
+    location: "paramount studio lot"
+    is_actor: false
+    level: 3
+
+source_material:
+  documents:
+    - key: noir-rulebook
+      format: rulebook
+      summary: "Setting rules for 1940s LA noir scenarios"
+  constraints:
+    - "No cell phones or modern technology"
+    - "No magic or supernatural elements"
+    - "Never break the noir tone with humor or camp"
+    - "Guns are last resort, not first option"
+
+turns:
+  # Turn 1: Private investigation — whispered conversation with Lena
+  # Should be private or limited to Jack only (Vivian is elsewhere)
+  - action: "lean in close to Lena and whisper: what can you tell me about Ruby's last night?"
+    action_id: whisper-lena
+    turn_visibility_default: private
+    checks:
+      - check_id: json_valid
+      - check_id: json_keys_present
+      - check_id: json_types_correct
+      - check_id: narration_length
+      - check_id: no_markdown_in_response
+      - check_id: visibility_fields_valid
+      - check_id: visibility_scope_present
+      - check_id: visibility_default_respected
+      - check_id: visibility_player_slugs_known
+      - check_id: visibility_npc_slugs_known
+      - check_id: visibility_no_narration_leak
+      - check_id: no_public_leak_in_private_turn
+      - check_id: npc_slug_valid
+      - check_id: judge:npc_speech_consistent
+      - check_id: judge:follows_setting
+
+  # Turn 2: Local action — ordering a drink at the bar
+  # Should be local (routine room activity, visible to same-location players)
+  - action: "walk up to the bar and order a rye, neat"
+    action_id: order-drink
+    turn_visibility_default: local
+    checks:
+      - check_id: json_valid
+      - check_id: json_keys_present
+      - check_id: narration_length
+      - check_id: visibility_fields_valid
+      - check_id: visibility_scope_present
+      - check_id: visibility_default_respected
+      - check_id: no_public_leak_in_private_turn
+      - check_id: judge:follows_setting
+
+  # Turn 3: Secret discovery — searching Ruby's coat at the coat check
+  # Should be private (covert action)
+  - action: "slip over to the coat check and quietly search Ruby's coat that's still hanging there"
+    action_id: search-coat
+    turn_visibility_default: private
+    checks:
+      - check_id: json_valid
+      - check_id: json_keys_present
+      - check_id: narration_length
+      - check_id: narration_no_recap
+      - check_id: visibility_fields_valid
+      - check_id: visibility_scope_present
+      - check_id: visibility_default_respected
+      - check_id: visibility_player_slugs_known
+      - check_id: visibility_npc_slugs_known
+      - check_id: no_public_leak_in_private_turn
+      - check_id: judge:follows_setting
+
+  # Turn 4: Calendar event with target_player and known_by
+  # Testing calendar privacy fields
+  - action: "ask Sal if he's seen anyone else asking about Ruby lately"
+    action_id: ask-sal
+    turn_visibility_default: private
+    checks:
+      - check_id: json_valid
+      - check_id: json_keys_present
+      - check_id: narration_length
+      - check_id: narration_no_recap
+      - check_id: visibility_fields_valid
+      - check_id: visibility_scope_present
+      - check_id: visibility_default_respected
+      - check_id: calendar_known_by_valid
+      - check_id: calendar_target_player_valid
+      - check_id: no_public_leak_in_private_turn
+      - check_id: npc_slug_valid
+      - check_id: judge:npc_speech_consistent

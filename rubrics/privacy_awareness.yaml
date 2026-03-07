@@ -1,0 +1,118 @@
+id: privacy-awareness
+name: "Turn Privacy & Information Compartmentalization"
+category: privacy
+scope: scenario
+description: >
+  Across all turns in a multi-player scenario, does the model make
+  contextually appropriate turn_visibility decisions? This rubric
+  evaluates whether the model understands WHEN actions should be
+  private, limited, local, or public — not just whether it outputs
+  valid fields (that's what the automated checks cover).
+
+  The four scopes:
+  - public: campaign-wide announcements visible to ALL players everywhere
+  - local: default for ordinary in-room action; visible to players at
+    the same location but not in global recap
+  - limited: only the acting player plus listed player_slugs
+  - private: actor-only (e.g. solo investigation, phone/SMS activity)
+
+  You have access to:
+  - All turns with their player actions and narrations
+  - The turn_visibility output for each turn (scope, player_slugs, npc_slugs)
+  - The PARTY_SNAPSHOT showing which players exist in the campaign
+  - The TURN_VISIBILITY_DEFAULT for each turn
+  - WORLD_CHARACTERS showing NPC locations and relationships
+
+  For each turn, ask: "Given this player action in this scene context,
+  is the chosen visibility scope the right call?" A whispered
+  conversation should be private. Ordering a drink at a bar should be
+  local. A campaign-wide alarm should be public. Texting someone
+  should be private.
+
+  If no turn_visibility was used in the scenario (single-player or
+  model never emitted it), score 5 (not applicable).
+levels:
+  5: >
+    ALL of these markers are present across the scenario:
+    (a) Every turn where the player action involves secrecy, stealth,
+        private conversation, solo exploration, or phone/SMS activity
+        uses scope "private" or "limited". Specific indicators: action
+        text contains words like "whisper", "sneak", "secretly", "alone",
+        "privately", "hide", "text", "sms", "phone", or describes an
+        action taken away from the group.
+    (b) Routine in-room actions (talking to NPCs present, ordering
+        drinks, examining objects) correctly use scope "local" when the
+        TURN_VISIBILITY_DEFAULT is "local". The model does not
+        over-share by making these "public" or under-share by making
+        them "private" when others in the room would witness them.
+    (c) Campaign-wide announcements, alarms, or events all players
+        should know about use scope "public". The model reserves
+        "public" for genuinely global information.
+    (d) When scope is "limited", the player_slugs list includes exactly
+        the players who are narratively present or addressed — not too
+        few (missing a player who is right there) and not too many
+        (including a player who is elsewhere).
+    (e) npc_slugs correctly identifies NPCs who would plausibly notice
+        the action based on their location and current_status in
+        WORLD_CHARACTERS. An NPC at the same location is aware. An NPC
+        in a different location is not listed.
+    (f) The model does not output summary_update on non-public turns
+        (the engine discards it for private/limited/local turns, so
+        including it shows confusion about the privacy model).
+  4: >
+    Privacy decisions are appropriate with ONE of these gaps:
+    (a) One turn uses "public" when "local" would be more precise —
+        the action is routine room-level activity but scope is public.
+        Not a secret action, so public is defensible but not optimal.
+    (b) One turn uses "local" when "private" would be more precise —
+        the action involves solo investigation or phone activity that
+        shouldn't be visible even to same-room players.
+    (c) npc_slugs is missing one NPC who is at the same location and
+        would plausibly notice, but all other NPC awareness decisions
+        are correct.
+    (d) A non-public turn includes a non-empty summary_update,
+        but the content is innocuous (e.g. time advancement, not
+        secret information).
+  3: >
+    Moderate privacy gaps. TWO OR MORE of these:
+    (a) The model uses "public" for all turns regardless of context —
+        it never uses "private", "limited", or "local" even when the
+        player action is clearly secret or room-level.
+    (b) The model uses "private" for all turns regardless of context —
+        it treats everything as secret even when the action is routine
+        room activity or group combat.
+    (c) The model never uses "local" — it jumps between "public" and
+        "private" without understanding room-scoped visibility.
+    (d) player_slugs on "limited" turns are random or include all
+        players — the model doesn't discriminate based on who is
+        narratively present.
+    (e) npc_slugs are always empty, even when NPCs are explicitly
+        present in the scene and would notice the action.
+    (f) Non-public turns consistently include summary_update
+        with information that should not be shared.
+  2: >
+    Poor privacy awareness. At least ONE of these:
+    (a) The model marks an explicitly secret action (whispering,
+        sneaking, texting) as "public" or "local" AND the narration
+        includes information that other players shouldn't know.
+    (b) The model marks a group combat or public event as "private",
+        hiding relevant information from party members who are present.
+    (c) player_slugs include players who don't exist in PARTY_SNAPSHOT
+        — the model is inventing recipients.
+    (d) The model outputs "limited" with an empty player_slugs array,
+        making the visibility semantically broken.
+    (e) Phone/SMS activity is marked as "public" or "local",
+        exposing private communications to all nearby players.
+  1: >
+    Privacy model is misunderstood. At least ONE of these:
+    (a) turn_visibility scope contradicts the narration — a "private"
+        turn's narration describes the player shouting to the group,
+        or a "public" turn's narration describes a whispered secret.
+    (b) The model never outputs turn_visibility in a multi-player
+        scenario where TURN_VISIBILITY_DEFAULT is not "public" — it
+        ignores the privacy system entirely.
+    (c) turn_visibility is present but scope values are nonsensical
+        (not public/private/limited/local) across multiple turns.
+    (d) The model uses turn_visibility to punish or manipulate —
+        hiding beneficial information from specific players or making
+        harmful events private so they can't be contested.
