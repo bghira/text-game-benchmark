@@ -2,6 +2,7 @@ name: noir-custom
 description: "Custom noir detective scenario with source material constraints — tests rulebook_adherent and state_null_prune"
 tags: [noir, custom, advanced]
 tier: advanced
+rubrics: [voice, pacing, causality, proportionality, contrivance, npc-autonomy]
 
 campaign:
   name: "Midnight on Vine"

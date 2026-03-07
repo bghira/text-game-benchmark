@@ -9,6 +9,7 @@ from pathlib import Path
 from tgb.checks.registry import list_checks
 from tgb.config import load_scenarios
 from tgb.results import BenchmarkRun, print_summary
+from tgb.rubric import Rubric, builtin_rubric_dir, load_rubrics
 
 
 def parse_model_spec(spec: str) -> tuple[str, str]:
@@ -135,6 +136,23 @@ def build_parser() -> argparse.ArgumentParser:
         default="",
         help="API key for OpenAI-compatible test subjects",
     )
+    parser.add_argument(
+        "--rubric-dir",
+        action="append",
+        dest="rubric_dirs",
+        metavar="DIR",
+        help="Additional rubric directory (can be repeated). Built-in rubrics always loaded.",
+    )
+    parser.add_argument(
+        "--no-rubrics",
+        action="store_true",
+        help="Skip all rubric grading",
+    )
+    parser.add_argument(
+        "--list-rubrics",
+        action="store_true",
+        help="List all available rubrics and exit",
+    )
     return parser
 
 
@@ -147,6 +165,20 @@ def main(argv: list[str] | None = None) -> None:
         print(f"Available checks ({len(checks)}):")
         for check_id in checks:
             print(f"  {check_id}")
+        sys.exit(0)
+
+    # Load rubrics
+    rubric_dirs = [str(builtin_rubric_dir())]
+    if args.rubric_dirs:
+        rubric_dirs.extend(args.rubric_dirs)
+    all_rubrics = load_rubrics(rubric_dirs) if not args.no_rubrics else {}
+
+    if args.list_rubrics:
+        print(f"Available rubrics ({len(all_rubrics)}):")
+        for rid, rubric in sorted(all_rubrics.items()):
+            print(f"  {rid}: {rubric.name} [{rubric.category}, {rubric.scope}]")
+            if rubric.computed_metric:
+                print(f"    computed_metric: {rubric.computed_metric}")
         sys.exit(0)
 
     if not args.scenarios:
@@ -166,6 +198,7 @@ def main(argv: list[str] | None = None) -> None:
     # Build judge if needed
     judge = None
     judge_model_name = ""
+    judge_client = None
     if not args.no_judge and args.judge_model:
         from tgb.clients.openai_compat import OpenAICompatClient
         from tgb.judge import JudgeEvaluator
@@ -186,6 +219,13 @@ def main(argv: list[str] | None = None) -> None:
             model=judge_model_name,
         )
         judge = JudgeEvaluator(client=judge_client)
+
+    # Build rubric grader if we have rubrics
+    rubric_grader = None
+    if all_rubrics and not args.no_rubrics:
+        from tgb.rubric import RubricGrader
+        # Reuse judge client for rubric grading; None means only computed metrics run
+        rubric_grader = RubricGrader(client=judge_client)
 
     # Run benchmark
     from tgb.runner import run_scenario
@@ -211,12 +251,27 @@ def main(argv: list[str] | None = None) -> None:
             if args.verbose:
                 print(f"\nScenario: {scenario.name}", file=sys.stderr)
 
+            # Filter rubrics for this scenario
+            scenario_rubrics: list[Rubric] = []
+            if all_rubrics and rubric_grader:
+                if scenario.rubrics:
+                    # Scenario specifies which rubrics to apply
+                    scenario_rubrics = [
+                        all_rubrics[rid] for rid in scenario.rubrics
+                        if rid in all_rubrics
+                    ]
+                else:
+                    # No filter — apply all loaded rubrics
+                    scenario_rubrics = list(all_rubrics.values())
+
             result = run_scenario(
                 scenario=scenario,
                 client=client,
                 provider=provider,
                 model=model_name,
                 judge=judge,
+                rubric_grader=rubric_grader,
+                rubrics=scenario_rubrics or None,
                 verbose=args.verbose,
             )
             run.results.append(result)

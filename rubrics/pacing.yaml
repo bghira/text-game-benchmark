@@ -1,0 +1,89 @@
+id: pacing
+name: "Pacing & Information Density"
+category: craft
+scope: turn
+description: >
+  Does the narration deliver the right amount of information for this
+  specific action? You are measuring information density: how many
+  distinct pieces of information (facts, descriptions, events, dialogue
+  lines) appear per sentence, and whether that density is appropriate
+  for what the player did.
+
+  Count these concrete things in the narration:
+  - New facts (things the player didn't know before)
+  - Sensory details (sights, sounds, smells, textures)
+  - NPC dialogue lines
+  - Events/actions that happen
+  - State changes (items gained/lost, doors opened, NPCs arriving/leaving)
+
+  Then compare that count to the action type. An "examine" action
+  should be detail-heavy but event-light. A "go to" action should
+  describe transition + destination. A "talk to" action should be
+  dialogue-heavy with minimal environmental detail.
+levels:
+  5: >
+    ALL of these markers are present:
+    (a) Information density matches the action type:
+        - Observation actions: 2-4 sensory details, 0-1 events, 0-1 new facts.
+        - Movement actions: 1-2 transition sentences, then room arrival details.
+        - Social actions: dialogue dominates, environmental detail is minimal.
+        - Combat/dramatic actions: event-focused, detail is in service of action.
+    (b) No sentence in the narration is pure filler — every sentence
+        either advances the scene, establishes a detail, or provides
+        dialogue. Remove any sentence and the narration loses something.
+    (c) The narration does not repeat information already in the room
+        description, prior narration, or world state. If the player is
+        already in the room, don't re-describe the room.
+    (d) The narration ends at a natural stopping point — it doesn't
+        trail off, and it doesn't set up the next beat so aggressively
+        that it robs the player of choosing what to do next.
+  4: >
+    Information density is appropriate with ONE of these issues:
+    (a) One sentence could be cut without losing meaningful content
+        (a redundant sensory detail, a restated fact).
+    (b) The narration slightly front-loads or back-loads its density
+        (all detail up front then a sparse ending, or vice versa).
+    (c) One piece of information from the room description or prior
+        narration is restated, but briefly (a clause, not a sentence).
+  3: >
+    Information density is uneven. TWO OR MORE of these:
+    (a) The narration contains 2+ sentences that could be cut without
+        losing content (atmospheric filler, redundant description,
+        throat-clearing).
+    (b) The action type and information type are mismatched: an
+        observation action triggers a lot of events, or a social
+        action has paragraphs of environmental description and
+        little dialogue.
+    (c) Information that was already established (room description,
+        prior narration, inventory) is restated in a full sentence
+        or more.
+    (d) The narration ends by explicitly setting up the next action
+        ("What do you do?", "You notice three possible exits...",
+        "The obvious choice is...").
+  2: >
+    Information density is poor. At least ONE of these:
+    (a) The narration contains a wall of text: 6+ sentences for a
+        simple action, with multiple sentences that add no new
+        information.
+    (b) The narration is so sparse that the player cannot picture
+        the scene: fewer than 2 sentences for a movement or social
+        action, missing basic spatial/sensory grounding.
+    (c) More than a third of the narration's content is restated from
+        the room description, prior narration, or world state.
+    (d) The narration introduces 4+ new facts/details in a single
+        action response, overwhelming the player with information
+        they didn't ask for.
+  1: >
+    Pacing is broken. At least ONE of these:
+    (a) The narration is a pure info-dump: 8+ sentences that read as a
+        encyclopedia entry or world-building document rather than a
+        scene being experienced.
+    (b) The narration is 1 sentence or fewer for an action that
+        requires spatial, social, or environmental context (the
+        player has no idea what happened or where they are).
+    (c) The narration re-narrates the player's own action back to them
+        in detail before describing any result ("You decide to walk
+        north. You take a step. You move forward. You arrive...").
+    (d) The entire narration is a setup for the next scene with no
+        resolution of the current action (the model is writing
+        a cliffhanger instead of responding to what the player did).

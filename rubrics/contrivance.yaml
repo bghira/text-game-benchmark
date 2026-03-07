@@ -1,0 +1,83 @@
+id: contrivance
+name: "Narrative Contrivance"
+category: craft
+scope: turn
+description: >
+  Are the events in the narration grounded in what was already
+  established, or do they appear from nowhere to serve the plot?
+
+  You have three sources of established fact: (1) the world state JSON
+  (characters, landmarks, game_time, location), (2) the prior narration
+  if provided, and (3) the player's action. Everything in the model's
+  narration should be traceable to one of these three sources, OR be a
+  reasonable environmental detail for the established setting (e.g. a
+  candle in a medieval room is fine; a telephone in a medieval room is
+  not).
+
+  Count the new elements the narration introduces (NPCs, objects,
+  events, locations) and check whether each one is justified.
+levels:
+  5: >
+    ALL of these markers are present:
+    (a) Every NPC who speaks or acts in the narration is either listed
+        in the world state characters, mentioned in the prior narration,
+        or is a generic unnamed presence appropriate to the location
+        (e.g. "a bartender" in a bar).
+    (b) Every object the narration focuses on is either in the player's
+        inventory, part of the room description, or a mundane fixture
+        of the established setting.
+    (c) Every event or consequence in the narration follows from the
+        player's action + established state. You can trace the causal
+        chain: "player did X, and because the world state says Y, then
+        Z happened."
+    (d) No information is revealed that the player character would have
+        no way of knowing at this point (no premature plot reveals).
+  4: >
+    Events are grounded with ONE minor stretch:
+    (a) One new environmental detail is introduced that wasn't in the
+        room description but is a reasonable inference for the setting
+        (e.g. cobwebs in an old house, the smell of salt near a harbor).
+    (b) A named NPC appears who wasn't in the world state but whose
+        presence is logically implied (e.g. a guard at a guarded gate).
+    (c) An NPC says something that slightly extends beyond their
+        established personality but doesn't contradict it.
+  3: >
+    Some elements appear without clear grounding. TWO OR MORE of these:
+    (a) A named NPC appears who is not in the world state and whose
+        presence is not implied by the location or prior events.
+    (b) An object appears that is not in the room description, the
+        inventory, or a mundane fixture — it exists to be interacted
+        with or to create a plot hook.
+    (c) A threat or complication arises that has no basis in the
+        established state (no foreshadowing, no logical connection
+        to the player's action).
+    (d) An NPC volunteers information that the player didn't ask for
+        and that conveniently advances a plot thread.
+  2: >
+    Events are manufactured. At least ONE of these:
+    (a) An NPC acts out of character (contradicts their established
+        personality, allegiance, or current_status) to create conflict
+        or provide information.
+    (b) The environment changes in a way not caused by the player's
+        action (a door locks, a bridge collapses, weather shifts)
+        specifically to create an obstacle or redirect the story.
+    (c) A "coincidence" connects two unrelated elements: an NPC shows
+        up at exactly the right moment, an object is found in exactly
+        the right place, information is overheard at exactly the right
+        time.
+    (d) The narration introduces backstory or lore that the player
+        character could not know and that serves to set up a future
+        plot beat.
+  1: >
+    The narration is transparently contrived. At least ONE of these:
+    (a) An entirely new NPC, faction, or threat appears with no prior
+        existence in the world state, performs a major plot action
+        (attack, betrayal, revelation), and had no foreshadowing.
+    (b) The narration contradicts the established world state (an NPC
+        who was described as an ally attacks, a locked door is suddenly
+        open, an item appears in inventory that wasn't there).
+    (c) The player's action is effectively ignored — the narration
+        describes a sequence of events that would have happened
+        regardless of what the player typed.
+    (d) Multiple coincidences stack in a single narration (right person
+        + right place + right time + right information).

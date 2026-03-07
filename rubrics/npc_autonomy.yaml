@@ -1,0 +1,90 @@
+id: npc-autonomy
+name: "NPC Autonomy & Characterization"
+category: agency
+scope: turn
+description: >
+  Do NPCs in this narration behave according to their established
+  character data, or do they act as plot-delivery devices?
+
+  You have access to each NPC's character sheet in the world state:
+  name, personality, speech_style, background, current_status,
+  allegiance, relationship. Compare what the NPC DOES and SAYS in the
+  narration against these fields.
+
+  This rubric applies only when NPCs appear in the narration. If no
+  NPCs speak or act, score 5 (not applicable).
+levels:
+  5: >
+    ALL of these markers are present for every NPC who speaks or acts:
+    (a) NPC dialogue matches their speech_style field. If speech_style
+        says "short sentences, never explains more than she has to",
+        the NPC's dialogue is terse. If it says "verbose and academic",
+        the dialogue uses long words. Quote a specific line of dialogue
+        and compare it to the speech_style.
+    (b) NPC behavior matches their personality and allegiance. An NPC
+        described as "guarded" does not volunteer information freely.
+        An NPC with allegiance "self" does not sacrifice themselves
+        for the player. An NPC with allegiance "player" does not
+        obstruct the player without reason.
+    (c) At least one NPC does something that serves their OWN goals
+        rather than the player's current objective. Example: an NPC
+        interrupts to ask about their own concerns, continues an
+        activity they were doing before the player arrived, or
+        reacts to something other than the player.
+    (d) NPCs who are present but not addressed by the player still
+        exhibit some behavior — they don't freeze until spoken to.
+        The Dormouse keeps dozing, the bartender keeps polishing
+        glasses, etc.
+  4: >
+    NPC characterization is strong with ONE of these issues:
+    (a) NPC dialogue is consistent with speech_style but one line is
+        slightly more verbose or formal than the style specifies.
+    (b) All NPCs present react to the player's action — none of them
+        pursue independent behavior in this turn. They are responsive
+        but not autonomous.
+    (c) An NPC's emotional reaction is appropriate but generic (e.g.
+        "surprised" when the speech_style suggests a more specific
+        kind of surprise).
+  3: >
+    NPCs are functional but lack personality. TWO OR MORE of these:
+    (a) NPC dialogue does not reflect speech_style — it's grammatically
+        correct and contextually appropriate but could belong to any
+        character. Two different NPCs in the same scene would sound
+        interchangeable.
+    (b) NPCs only react to the player — they have no independent
+        behavior, no ongoing activity, no personal agenda visible in
+        the narration.
+    (c) An NPC provides exactly the information or assistance the plot
+        needs at this moment, with no resistance, confusion, or
+        personal angle.
+    (d) NPC descriptions in the narration do not reference their
+        established appearance, background, or current_status — they
+        are described generically.
+  2: >
+    NPCs act as plot devices. At least ONE of these:
+    (a) An NPC contradicts their established personality to serve the
+        narrative. Example: a "guarded" NPC openly shares secrets,
+        a "hostile" NPC is suddenly helpful, a "timid" NPC
+        confronts the player.
+    (b) An NPC delivers exposition — a block of information about the
+        setting, plot, or backstory — unprompted and in a way that
+        doesn't fit their character (info-dump via dialogue).
+    (c) Multiple NPCs in the scene all react the same way to the
+        player's action, with no individual variation.
+    (d) An NPC's current_status or location changes without narrated
+        cause (they were "at the bar" and are now "at the door"
+        without walking there).
+  1: >
+    NPCs are puppets. At least ONE of these:
+    (a) An NPC's dialogue directly contradicts their speech_style field
+        (e.g. a character with speech_style "terse, monosyllabic"
+        delivers a flowery paragraph).
+    (b) An NPC acts completely against their established allegiance
+        (an ally attacks, an enemy helps) with no in-narration
+        justification.
+    (c) An NPC who was not in the scene or location appears without
+        explanation specifically to deliver information or advance
+        the plot.
+    (d) NPCs have no distinguishing features — all dialogue is in the
+        same voice, all reactions are the same, and removing any NPC
+        from the scene would not change the narration.

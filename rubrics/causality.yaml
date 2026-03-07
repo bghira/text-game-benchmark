@@ -1,0 +1,88 @@
+id: causality
+name: "Causal Coherence"
+category: craft
+scope: turn
+description: >
+  Does the narration's content follow logically from the player's
+  action combined with the established world state? This is about
+  the A→B chain: the player did A, and B happened — does B make
+  sense given A and the world?
+
+  You have the player's action text, the world state, and the
+  narration. For each event/consequence in the narration, ask:
+  "Can I explain why this happened by pointing to the player's
+  action and/or something in the world state?" If yes, it's causal.
+  If you have to invent a reason, it's not.
+
+  This rubric overlaps with contrivance but focuses specifically on
+  the cause→effect chain, not on whether elements are grounded.
+levels:
+  5: >
+    ALL of these markers are present:
+    (a) The primary consequence in the narration directly follows from
+        the player's action verb. If the player said "open the door",
+        the narration describes the door opening and what's beyond it.
+        If the player said "talk to X", X responds. The response
+        addresses the action, not a tangent.
+    (b) Any secondary consequences (NPC reactions, environmental
+        changes, state updates) are traceable to either the player's
+        action or to existing world state. Example: a guard reacts
+        because the player entered a restricted area and the guard
+        was established as present.
+    (c) The narration does not introduce consequences that require
+        information the player character doesn't have. Example: an
+        NPC doesn't react to a secret the player hasn't discovered.
+    (d) The state_update JSON is consistent with the narration. If the
+        narration says the player picked up a key, the state_update
+        adds the key to inventory. No phantom state changes.
+  4: >
+    Causal chain is clear with ONE minor gap:
+    (a) One secondary consequence is a reasonable inference but not
+        directly traceable — it makes sense but requires a small
+        logical step (e.g. a noise attracts attention, but the noise
+        wasn't explicitly described).
+    (b) An NPC reacts to the player's action in a way that's plausible
+        but slightly stronger than warranted (e.g. alarm at a
+        non-alarming action).
+    (c) The state_update includes one minor change that the narration
+        implies but doesn't explicitly describe.
+  3: >
+    The causal chain has gaps. TWO OR MORE of these:
+    (a) The primary consequence is loosely related to the action but
+        includes elements the action didn't initiate. Example: player
+        says "look at the painting" and the narration includes the
+        painting falling off the wall.
+    (b) An NPC reacts to something other than the player's action,
+        or reacts with knowledge they shouldn't have.
+    (c) An environmental change occurs (weather, lighting, sound) that
+        has no connection to the player's action or established
+        timers/events.
+    (d) The state_update contains a change that contradicts or goes
+        beyond what the narration describes.
+  2: >
+    Consequences are arbitrary. At least ONE of these:
+    (a) The narration describes a consequence that has no logical
+        connection to the player's action. Example: player says
+        "sit down" and an earthquake happens.
+    (b) An NPC performs a significant action (attacks, reveals a secret,
+        leaves the scene) with no trigger from the player's input or
+        established state.
+    (c) The narration introduces a consequence from a previous turn
+        that was never established (retroactive causality — inventing
+        prior events to justify current ones).
+    (d) The state_update changes player location, inventory, or NPC
+        status in ways the narration does not describe or justify.
+  1: >
+    Consequences are random or contradictory. At least ONE of these:
+    (a) The narration ignores the player's action entirely — the
+        response would be the same regardless of what the player typed.
+    (b) The narration contradicts the established world state: an NPC
+        who was established as friendly attacks without provocation,
+        a door that was locked is described as open, an item that
+        was in inventory is described as absent.
+    (c) The narration describes the player character doing something
+        the player did not request and that has consequences (the
+        model invents player actions to create a causal chain).
+    (d) Multiple unrelated consequences occur simultaneously with no
+        shared cause — the narration reads as a random sequence of
+        events rather than a scene.

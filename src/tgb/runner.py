@@ -12,6 +12,7 @@ from tgb.judge import JudgeEvaluator
 from tgb.prompt_builder import AccumulatedState, PromptBuilder
 from tgb.response_parser import ParsedResponse, parse_response
 from tgb.results import ActionResult, ScenarioResult
+from tgb.rubric import Rubric, RubricGrader
 from tgb.clients.ollama_client import TimingData
 
 
@@ -64,6 +65,8 @@ def run_scenario(
     provider: str,
     model: str,
     judge: JudgeEvaluator | None = None,
+    rubric_grader: RubricGrader | None = None,
+    rubrics: list[Rubric] | None = None,
     verbose: bool = False,
 ) -> ScenarioResult:
     """Run a complete scenario, returning aggregated results."""
@@ -74,6 +77,7 @@ def run_scenario(
         model=model,
         provider=provider,
     )
+    narrations: list[str] = []  # collected for rubric grading
 
     for i, turn in enumerate(scenario.turns):
         if verbose:
@@ -100,6 +104,7 @@ def run_scenario(
                 raw_response="",
             )
             scenario_result.actions.append(action_result)
+            narrations.append("")
             continue
 
         # Parse response
@@ -108,6 +113,13 @@ def run_scenario(
         if verbose:
             status = "tool_call" if parsed.is_tool_call else "response"
             print(f"    Parsed: {status}, keys={list(parsed.parsed_json.keys())[:5]}", file=sys.stderr)
+
+        # Collect narration for rubric grading
+        narration = parsed.parsed_json.get("narration", "")
+        if isinstance(narration, str):
+            narrations.append(narration)
+        else:
+            narrations.append("")
 
         # Run automated checks
         auto_results = run_auto_checks(parsed, scenario, turn, state)
@@ -119,11 +131,19 @@ def run_scenario(
 
         all_results = auto_results + judge_results
 
+        # Grade turn-scope rubrics
+        rubric_scores = []
+        if rubric_grader and rubrics:
+            rubric_scores = rubric_grader.grade_turn(
+                rubrics, parsed, scenario, turn, state, narrations,
+            )
+
         # Create action result
         action_result = ActionResult(
             action_id=turn.action_id,
             action=turn.action,
             checks=all_results,
+            rubric_scores=rubric_scores,
             timing=timing,
             raw_response=raw_text,
         )
@@ -133,8 +153,23 @@ def run_scenario(
             passed = sum(1 for r in all_results if r.passed)
             total = len(all_results)
             print(f"    Checks: {passed}/{total} passed", file=sys.stderr)
+            if rubric_scores:
+                for rs in rubric_scores:
+                    print(f"    Rubric {rs.rubric_id}: {rs.score}/{rs.max_score}", file=sys.stderr)
 
         # Update accumulated state for next turn
         state.apply(parsed.parsed_json if not parsed.is_tool_call else None)
+
+    # Grade scenario-scope rubrics (across all turns)
+    if rubric_grader and rubrics and narrations:
+        scenario_rubric_scores = rubric_grader.grade_scenario(
+            rubrics, narrations, scenario, state,
+        )
+        scenario_result.rubric_scores = scenario_rubric_scores
+        if verbose and scenario_rubric_scores:
+            for rs in scenario_rubric_scores:
+                metric_str = f" (sim={rs.metric_value:.3f})" if rs.metric_name else ""
+                print(f"  Scenario rubric {rs.rubric_id}: "
+                      f"{rs.score}/{rs.max_score}{metric_str}", file=sys.stderr)
 
     return scenario_result

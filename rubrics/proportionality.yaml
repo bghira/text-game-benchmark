@@ -1,0 +1,79 @@
+id: proportionality
+name: "Proportionality of Response"
+category: craft
+scope: turn
+description: >
+  Is the scale of the model's response matched to the scale of the
+  player's action? You are comparing two things: (1) what the player
+  typed — its complexity, ambition, and implied scope, and (2) what
+  the narration contains — how many new elements, how much scene
+  change, how much consequence.
+
+  A player who says "look around" is performing a zero-stakes
+  observation. A player who says "attack the dragon" is escalating.
+  The narration should match.
+levels:
+  5: >
+    ALL of these markers are present:
+    (a) The narration's sentence count is proportional to the action's
+        scope. Observation actions ("look", "examine", "listen") produce
+        1-4 sentences of description. Movement actions produce a short
+        transition + new room description. Social actions produce
+        dialogue proportional to the exchange initiated.
+    (b) The number of NEW elements introduced (NPCs, objects, threats,
+        plot points) is zero or one for simple actions, up to two or
+        three for complex actions.
+    (c) No dramatic escalation occurs unless the player's action
+        explicitly initiates it. If the player says "pick up the cup",
+        nobody dies, no secrets are revealed, no chase begins.
+    (d) The emotional register of the narration matches the action:
+        mundane actions get neutral prose, dramatic actions get
+        heightened prose.
+  4: >
+    The response is well-matched to the action with ONE of these
+    minor issues:
+    (a) One extra descriptive sentence beyond what the action warrants
+        (e.g. a sensory detail that adds atmosphere but isn't needed).
+    (b) An NPC reacts with slightly more emotion or dialogue than the
+        player's action would naturally provoke (e.g. a greeting gets
+        a two-line response instead of one).
+    (c) The narration introduces one new minor detail (a sound, a
+        smell) that wasn't prompted by the action, but it's environmental
+        color, not a plot element.
+  3: >
+    The response is noticeably larger than the action warrants.
+    TWO OR MORE of these are true:
+    (a) The narration is more than double the sentence count appropriate
+        for the action type (e.g. "look at the table" produces 6+
+        sentences).
+    (b) A new NPC, object, or complication is introduced that the
+        player's action did not interact with or ask about.
+    (c) The narration includes a mini-scene (dialogue exchange, physical
+        sequence, flashback) triggered by a simple observation or
+        movement action.
+    (d) The emotional register is higher than the action warrants
+        (ominous language for opening a cupboard, dramatic tension
+        for asking a question).
+  2: >
+    The response is clearly disproportionate. At least ONE of these:
+    (a) A non-combat, non-confrontational action triggers a threat,
+        chase, or danger sequence.
+    (b) The narration introduces a plot revelation (secret, betrayal,
+        hidden identity) in response to a routine action (looking,
+        walking, greeting).
+    (c) Multiple new NPCs appear or multiple new plot threads open in
+        response to a single simple action.
+    (d) The narration exceeds 8 sentences for an action that is a
+        single-verb command (look, go, take, talk).
+  1: >
+    The response is wildly disproportionate. At least ONE of these:
+    (a) A trivial action (examining an object, greeting someone) triggers
+        combat, death, a major plot twist, or an irreversible
+        consequence.
+    (b) The narration introduces 3+ new elements (NPCs, objects, threats)
+        none of which were implied by the action or established state.
+    (c) The narration contains a multi-paragraph set-piece (more than
+        10 sentences) in response to a one-line player action.
+    (d) The model writes actions, dialogue, or decisions for the player
+        character that the player did not request, in order to justify
+        an escalated scene.

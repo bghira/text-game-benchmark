@@ -2,6 +2,7 @@ name: alice-no-sms
 description: "Verifies SMS tools are NOT used in a fantasy/wonderland setting where phones don't exist"
 tags: [alice, sms, negative, basic]
 tier: basic
+rubrics: [voice, pacing]
 
 campaign:
   name: alice

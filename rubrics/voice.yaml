@@ -1,0 +1,88 @@
+id: voice
+name: "Narrative Voice & Tone Consistency"
+category: craft
+scope: turn
+description: >
+  Does the narration's language match the scenario's established tone?
+  The tone is specified in the world state (e.g. "hard-boiled, cynical,
+  atmospheric" for noir; the setting implies whimsical/dreamlike for
+  Alice in Wonderland).
+
+  You are checking WORD-LEVEL and SENTENCE-LEVEL choices. This is not
+  about plot or content — it's about whether the prose itself sounds
+  like it belongs in this genre. Read the narration out loud in your
+  head: does it sound like the right kind of writing?
+
+  Key dimensions: vocabulary register (formal/informal/archaic/modern),
+  sentence rhythm (short punchy vs. long flowing), imagery type
+  (sensory details matching the genre), and emotional coloring
+  (cynical vs. whimsical vs. clinical vs. lyrical).
+levels:
+  5: >
+    ALL of these markers are present:
+    (a) Vocabulary is consistently genre-appropriate throughout. Noir
+        uses hardboiled language (shadows, dame, slugged, rotgut);
+        fantasy uses evocative/archaic language; whimsical uses playful,
+        absurdist phrasing. No word in the narration would be out of
+        place in a published work of this genre.
+    (b) Sentence rhythm matches the genre. Noir: short declarative
+        sentences, sentence fragments, clipped dialogue. Fantasy:
+        varied length with some complex constructions. Whimsical:
+        run-on thoughts, asides, parentheticals. The rhythm is
+        consistent across the entire narration.
+    (c) Sensory details are genre-coded. Noir: smoke, neon, rain,
+        whiskey, concrete. Fantasy: stone, torchlight, ancient,
+        weathered. The narration never uses a sensory detail that
+        breaks the genre (no "fluorescent lights" in fantasy, no
+        "magical shimmer" in noir).
+    (d) The narration contains zero instances of generic LLM phrasing:
+        no "I understand", no "certainly", no "it's worth noting",
+        no "nestled", no "tapestry of", no "a testament to". The
+        prose has a specific authored quality.
+  4: >
+    The voice is appropriate with ONE of these minor breaks:
+    (a) One or two words in the narration are register-neutral rather
+        than genre-specific (e.g. "walked" instead of "sauntered" or
+        "skulked" in noir; "said" instead of something more colorful
+        in whimsical).
+    (b) One sentence has a rhythm that doesn't match the rest (e.g. a
+        long complex sentence in otherwise punchy noir prose).
+    (c) One generic phrase appears ("the air was thick with tension")
+        that isn't LLM-sounding but is cliche for the genre.
+  3: >
+    The voice is present but inconsistent. TWO OR MORE of these:
+    (a) The narration mixes registers — some sentences are genre-
+        appropriate, others read as plain neutral prose with no
+        genre flavor.
+    (b) Sentence rhythm is inconsistent: the narration doesn't commit
+        to a style and shifts between short/long without pattern.
+    (c) Sensory details are generic rather than genre-coded (uses
+        "dark" and "quiet" instead of genre-specific imagery).
+    (d) The narration contains one instance of identifiable LLM
+        phrasing (the words listed in level 5d, or similar
+        hallmarks: "delve", "vibrant", "underscores", "pivotal").
+  2: >
+    The voice is mismatched or absent. At least ONE of these:
+    (a) The narration uses vocabulary from the wrong genre or era
+        (modern slang in a period piece, formal academic language
+        in a whimsical setting, fantasy language in a noir).
+    (b) More than two instances of generic LLM phrasing appear in
+        the narration.
+    (c) The narration reads as a neutral description of events with
+        no genre coloring — it could be transplanted to any scenario
+        without changing a word.
+    (d) The tone contradicts the scenario's stated tone (humorous
+        writing in a dark/serious setting, clinical writing in a
+        whimsical setting).
+  1: >
+    The voice is broken. At least ONE of these:
+    (a) The narration reads as a generic AI completion: uses multiple
+        LLM hallmark phrases, has no personality, and could have been
+        generated for any prompt.
+    (b) The narration actively breaks the fourth wall or genre (uses
+        game-mechanical language like "you gain +5 reputation",
+        references the AI/model, or uses a chatbot-like tone).
+    (c) The narration mixes three or more incompatible registers in a
+        single paragraph (e.g. archaic + modern slang + clinical).
+    (d) The vocabulary, imagery, and rhythm all belong to a different
+        genre than the one specified in the scenario.
