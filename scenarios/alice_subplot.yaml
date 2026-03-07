@@ -1,0 +1,149 @@
+name: alice-subplot
+description: "Multi-turn Alice scenario exercising subplot tools — plot threads, chapters, consequences, and follow-through"
+tags: [alice, subplot, advanced]
+tier: advanced
+rubrics: [subplot-followthrough, causality, pacing, voice, repetitiveness]
+
+campaign:
+  name: alice
+  preset: alice
+  difficulty: normal
+  guardrails: false
+  on_rails: false
+  timed_events: false
+  memory: false
+  speed: 1.0
+  state:
+    main_party_location: "queen's croquet ground"
+    tone: "whimsical, nonsensical, menacing undercurrent"
+    setting: "Wonderland"
+    landmarks:
+      - "queen's croquet ground"
+      - "hedge maze"
+      - "royal rose garden"
+      - "trial courtyard"
+    game_time:
+      day: 1
+      hour: 14
+      minute: 0
+      period: "afternoon"
+      date_label: "Day 1, Afternoon"
+  characters:
+    queen-of-hearts:
+      name: "Queen of Hearts"
+      personality: "Imperious, volatile, quick to anger, demands absolute obedience"
+      background: "Ruler of Wonderland's card court, infamous for ordering executions"
+      appearance: "A large woman with a red face and a golden crown, flanked by playing-card soldiers"
+      speech_style: "Bellowing commands. Short declarative sentences ending in exclamation marks. Never asks — orders. Uses 'Off with their head!' as punctuation."
+      location: "queen's croquet ground"
+      current_status: "overseeing a croquet game with flamingo mallets and hedgehog balls"
+      allegiance: "self"
+      relationship: "hostile authority"
+    cheshire-cat:
+      name: "Cheshire Cat"
+      personality: "Cryptic, amused, detached, speaks in riddles and half-truths"
+      background: "A grinning cat that can appear and disappear at will"
+      appearance: "A wide grin floating in mid-air, sometimes with a striped cat body attached"
+      speech_style: "Drawling, philosophical. Answers questions with questions. Uses wordplay and paradox. Never gives a straight answer."
+      location: "hedge maze"
+      current_status: "invisible, grinning from a tree branch"
+      allegiance: "neutral"
+      relationship: "unreliable informant"
+    white-rabbit:
+      name: "White Rabbit"
+      personality: "Anxious, punctual, easily flustered, terrified of the Queen"
+      background: "Herald of the Queen's court, perpetually late"
+      appearance: "A white rabbit in a waistcoat, clutching a pocket watch"
+      speech_style: "Rapid, stammering. Checks watch mid-sentence. 'Oh dear! Oh dear!' Trails off when frightened."
+      location: "queen's croquet ground"
+      current_status: "hovering near the Queen, nervously reading announcements"
+      allegiance: "queen"
+      relationship: "reluctant guide"
+
+player:
+  user_id: 100000001
+  level: 2
+  state:
+    character_name: Alice
+    location: "queen's croquet ground"
+    room_title: "The Queen's Croquet Ground"
+    room_summary: "A chaotic croquet ground where flamingos serve as mallets and hedgehogs as balls. The Queen of Hearts presides."
+    room_description: >
+      The croquet ground is a mess of living obstacles. Flamingos squirm
+      in the hands of card-soldiers trying to use them as mallets.
+      Hedgehogs uncurl and wander off mid-stroke. The Queen of Hearts
+      storms between the arches, face red, bellowing orders.
+      The White Rabbit scurries behind her, reading from a scroll.
+    exits: ["enter the hedge maze", "approach the Queen", "head to the rose garden"]
+    inventory: ["eat me cake (small piece)", "drink me bottle (half full)"]
+
+turns:
+  # Turn 1: Initial action that should trigger plot planning
+  - action: "approach the Queen and ask to join the croquet game"
+    action_id: approach-queen
+    checks:
+      - check_id: json_valid
+      - check_id: json_keys_present
+      - check_id: json_types_correct
+      - check_id: narration_length
+      - check_id: no_markdown_in_response
+      - check_id: npc_slug_valid
+      - check_id: plot_thread_fields_valid
+      - check_id: plot_thread_target_reasonable
+      - check_id: consequence_fields_valid
+      - check_id: consequence_severity_proportional
+      - check_id: judge:npc_speech_consistent
+      - check_id: judge:follows_setting
+
+  # Turn 2: Action in the hedge maze — should trigger chapter or advance plot
+  - action: "sneak away from the croquet game and enter the hedge maze"
+    action_id: enter-maze
+    checks:
+      - check_id: json_valid
+      - check_id: json_keys_present
+      - check_id: narration_length
+      - check_id: location_coherent
+        params:
+          expect_move: true
+      - check_id: plot_thread_fields_valid
+      - check_id: chapter_fields_valid
+      - check_id: chapter_scene_progression
+      - check_id: consequence_fields_valid
+      - check_id: plot_thread_not_orphaned
+      - check_id: judge:follows_setting
+
+  # Turn 3: Encounter in the maze — consequences should be active
+  - action: "ask the Cheshire Cat for directions to escape the maze"
+    action_id: ask-cheshire
+    checks:
+      - check_id: json_valid
+      - check_id: json_keys_present
+      - check_id: narration_length
+      - check_id: narration_no_recap
+      - check_id: npc_slug_valid
+      - check_id: plot_thread_fields_valid
+      - check_id: chapter_fields_valid
+      - check_id: chapter_scene_progression
+      - check_id: consequence_fields_valid
+      - check_id: plot_thread_not_orphaned
+      - check_id: judge:npc_speech_consistent
+
+  # Turn 4: Resolution — threads and chapters should be resolving
+  - action: "follow the Cat's directions through the maze to the rose garden"
+    action_id: exit-maze
+    checks:
+      - check_id: json_valid
+      - check_id: json_keys_present
+      - check_id: narration_length
+      - check_id: narration_no_recap
+      - check_id: location_coherent
+        params:
+          expect_move: true
+      - check_id: plot_thread_fields_valid
+      - check_id: plot_thread_target_reasonable
+      - check_id: chapter_fields_valid
+      - check_id: chapter_scene_progression
+      - check_id: consequence_fields_valid
+      - check_id: plot_thread_not_orphaned
+      - check_id: judge:follows_setting
+      - check_id: judge:movement_narrated

@@ -25,6 +25,7 @@ class TurnSpec:
     action: str
     checks: list[CheckSpec] = field(default_factory=list)
     action_id: str = ""
+    turn_visibility_default: str = "public"  # "public" | "local" | "private"
 
 
 @dataclass(frozen=True)
@@ -60,6 +61,7 @@ class CampaignSetup:
     memory: bool = False
     difficulty: str = "normal"
     speed: float = 1.0
+    multi_player: bool = False  # enables turn_visibility in prompts
 
 
 @dataclass(frozen=True)
@@ -136,7 +138,9 @@ def _build_turn_spec(raw: dict[str, Any], index: int) -> TurnSpec:
     checks_raw = raw.get("checks", [])
     checks = [_build_check_spec(c) for c in checks_raw]
     action_id = raw.get("action_id", f"turn-{index}")
-    return TurnSpec(action=action, checks=checks, action_id=action_id)
+    visibility_default = raw.get("turn_visibility_default", "public")
+    return TurnSpec(action=action, checks=checks, action_id=action_id,
+                    turn_visibility_default=visibility_default)
 
 
 def _build_source_material(raw: dict[str, Any] | None) -> SourceMaterial | None:
@@ -188,6 +192,7 @@ def _build_campaign(raw: dict[str, Any]) -> CampaignSetup:
         memory=bool(campaign_data.get("memory", False)),
         difficulty=campaign_data.get("difficulty", "normal"),
         speed=float(campaign_data.get("speed", 1.0)),
+        multi_player=bool(campaign_data.get("multi_player", False)),
     )
 
 

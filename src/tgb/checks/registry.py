@@ -45,6 +45,28 @@ from tgb.checks.sms import (
     check_sms_thread_slug_stable,
     check_no_sms_in_wrong_era,
 )
+from tgb.checks.subplot import (
+    plot_thread_fields_valid,
+    plot_thread_target_reasonable,
+    plot_thread_not_orphaned,
+    chapter_fields_valid,
+    chapter_scene_progression,
+    consequence_fields_valid,
+    consequence_severity_proportional,
+)
+from tgb.checks.privacy import (
+    check_visibility_fields_valid,
+    check_visibility_scope_present,
+    check_visibility_default_respected,
+    check_visibility_player_slugs_known,
+    check_visibility_npc_slugs_known,
+    check_visibility_no_narration_leak,
+    check_calendar_known_by_valid,
+    check_calendar_target_player_valid,
+    check_no_public_leak_in_private_turn,
+    check_sms_not_in_narration,
+    check_sms_turn_private,
+)
 
 from tgb.checks.base import CheckFn
 
@@ -84,6 +106,26 @@ CHECKS: dict[str, CheckFn] = {
     "sms_no_context_leak": check_sms_no_context_leak,
     "sms_thread_slug_stable": check_sms_thread_slug_stable,
     "no_sms_in_wrong_era": check_no_sms_in_wrong_era,
+    # Subplot checks
+    "plot_thread_fields_valid": plot_thread_fields_valid,
+    "plot_thread_target_reasonable": plot_thread_target_reasonable,
+    "plot_thread_not_orphaned": plot_thread_not_orphaned,
+    "chapter_fields_valid": chapter_fields_valid,
+    "chapter_scene_progression": chapter_scene_progression,
+    "consequence_fields_valid": consequence_fields_valid,
+    "consequence_severity_proportional": consequence_severity_proportional,
+    # Privacy checks
+    "visibility_fields_valid": check_visibility_fields_valid,
+    "visibility_scope_present": check_visibility_scope_present,
+    "visibility_default_respected": check_visibility_default_respected,
+    "visibility_player_slugs_known": check_visibility_player_slugs_known,
+    "visibility_npc_slugs_known": check_visibility_npc_slugs_known,
+    "visibility_no_narration_leak": check_visibility_no_narration_leak,
+    "calendar_known_by_valid": check_calendar_known_by_valid,
+    "calendar_target_player_valid": check_calendar_target_player_valid,
+    "no_public_leak_in_private_turn": check_no_public_leak_in_private_turn,
+    "sms_not_in_narration": check_sms_not_in_narration,
+    "sms_turn_private": check_sms_turn_private,
 }
 
 
