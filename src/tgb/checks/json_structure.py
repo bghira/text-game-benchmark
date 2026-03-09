@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from tgb.checks.base import CheckResult
+from tgb.checks.limits import XP_MIN, XP_MAX
 from tgb.config import Scenario, TurnSpec
 from tgb.prompt_builder import AccumulatedState
 from tgb.response_parser import ParsedResponse
@@ -25,9 +26,16 @@ EXPECTED_TYPES: dict[str, type | tuple[type, ...]] = {
     "scene_image_prompt": str,
     "character_updates": dict,
     "give_item": dict,
+    "turn_visibility": dict,
+    "calendar_update": dict,
+    "dice_check": dict,
+    "puzzle_trigger": dict,
+    "minigame_challenge": dict,
     "set_timer_delay": (int, float),
     "set_timer_event": str,
     "set_timer_interruptible": bool,
+    "set_timer_interrupt_action": (str, type(None)),
+    "set_timer_interrupt_scope": str,
 }
 
 
@@ -152,16 +160,23 @@ def check_xp_range(
             detail="xp_awarded missing",
             category="json_structure",
         )
-    if not isinstance(xp, (int, float)):
+    if isinstance(xp, bool) or not isinstance(xp, (int, float)):
         return CheckResult(
             check_id="xp_range",
             passed=False,
             detail=f"xp_awarded is {type(xp).__name__}, not int",
             category="json_structure",
         )
+    if isinstance(xp, float) and xp != int(xp):
+        return CheckResult(
+            check_id="xp_range",
+            passed=False,
+            detail=f"xp_awarded is {xp} (float), must be an integer",
+            category="json_structure",
+        )
     xp_int = int(xp)
-    min_xp = params.get("min", 0)
-    max_xp = params.get("max", 10)
+    min_xp = params.get("min", XP_MIN)
+    max_xp = params.get("max", XP_MAX)
     if not (min_xp <= xp_int <= max_xp):
         return CheckResult(
             check_id="xp_range",

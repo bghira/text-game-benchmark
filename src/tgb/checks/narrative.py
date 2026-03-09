@@ -7,6 +7,11 @@ from collections import Counter
 from typing import Any
 
 from tgb.checks.base import CheckResult
+from tgb.checks.limits import (
+    NARRATION_MAX_CHARS, NARRATION_MIN_CHARS,
+    NARRATION_MAX_WORDS, NARRATION_MIN_WORDS,
+    REASONING_MAX_CHARS,
+)
 from tgb.config import Scenario, TurnSpec
 from tgb.prompt_builder import AccumulatedState
 from tgb.response_parser import ParsedResponse
@@ -21,7 +26,7 @@ def check_reasoning_concise(
 ) -> CheckResult:
     """Check that reasoning is <= 1200 chars."""
     reasoning = parsed.parsed_json.get("reasoning", "")
-    max_chars = params.get("max_chars", 1200)
+    max_chars = params.get("max_chars", REASONING_MAX_CHARS)
     if not isinstance(reasoning, str):
         return CheckResult(
             check_id="reasoning_concise",
@@ -62,10 +67,10 @@ def check_narration_length(
             category="narrative",
         )
 
-    max_chars = params.get("max_chars", 1800)
-    min_chars = params.get("min_chars", 10)
-    max_words = params.get("max_words", 300)
-    min_words = params.get("min_words", 5)
+    max_chars = params.get("max_chars", NARRATION_MAX_CHARS)
+    min_chars = params.get("min_chars", NARRATION_MIN_CHARS)
+    max_words = params.get("max_words", NARRATION_MAX_WORDS)
+    min_words = params.get("min_words", NARRATION_MIN_WORDS)
 
     char_len = len(narration)
     word_count = len(narration.split())

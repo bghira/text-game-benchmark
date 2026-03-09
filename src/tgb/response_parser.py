@@ -90,15 +90,17 @@ def clean_response(response: str) -> str:
     if json_text:
         return json_text
 
-    # Repair truncated object (missing final brace)
+    # Repair truncated object (missing closing braces)
     if cleaned.startswith("{") and not cleaned.endswith("}"):
-        repaired = f"{cleaned}}}"
-        try:
-            parsed = parse_json_lenient(repaired)
-            if isinstance(parsed, dict) and parsed:
-                return repaired
-        except Exception:
-            pass
+        # Try adding 1-4 closing braces to handle different nesting depths
+        for n in range(1, 5):
+            repaired = cleaned + "}" * n
+            try:
+                parsed = parse_json_lenient(repaired)
+                if isinstance(parsed, dict) and parsed:
+                    return repaired
+            except Exception:
+                continue
 
     return cleaned
 

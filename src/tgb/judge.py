@@ -107,6 +107,53 @@ CRITERION_PROMPTS: dict[str, str] = {
         "If the setting has no phones (fantasy, medieval, etc.), SMS tools should never appear. "
         "Pass if tool usage matches the scenario context."
     ),
+    "recent_turns_called": (
+        "Did the model call recent_turns before producing its final narration? "
+        "The engine requires recent_turns to be called on every normal gameplay turn "
+        "to load immediate visible continuity before narrating. "
+        "Pass if recent_turns was called in a prior tool round, or if the response "
+        "shows evidence of loaded continuity. Fail if the model skipped straight "
+        "to narration without gathering recent context."
+    ),
+    "research_phase_appropriate": (
+        "Was the model's use of research tools (memory_search, source_browse, sms_read) "
+        "appropriate for the turn? The model should call memory_search when deeper or "
+        "older continuity matters — not reflexively after every recent_turns call. "
+        "SMS tools should be used when the player action involves phone/text communication. "
+        "Pass if tool usage is proportional to the action's needs. "
+        "Fail if the model either over-researches trivial actions or under-researches "
+        "complex ones that reference prior events or established NPCs."
+    ),
+    "dice_check_appropriate": (
+        "If a dice_check was requested, is it appropriate for the action? "
+        "Dice checks should only be used when the outcome is genuinely uncertain — "
+        "not for trivial actions (looking around, talking) or impossible feats. "
+        "The DC should reflect reasonable difficulty for the context. "
+        "The on_success and on_failure outcomes should both be narratively interesting. "
+        "Pass if no dice_check, or if the check is well-calibrated and contextually appropriate."
+    ),
+    "give_item_appropriate": (
+        "If give_item was used, is it appropriate for the player's action? "
+        "give_item should only appear when the player is explicitly transferring an item "
+        "to another player character. It should not be used for NPC interactions, "
+        "dropping items, or storing them. The item field should name a real item "
+        "from the player's inventory. "
+        "Pass if no give_item, or if the transfer matches the player's action."
+    ),
+    "calendar_event_grounded": (
+        "If calendar_update was used to add events, are they grounded in the narrative? "
+        "Calendar events should reference established plot points, NPC plans, or "
+        "world events — not arbitrary deadlines invented by the model. "
+        "The time_remaining should be proportional to the event's narrative weight. "
+        "Pass if no calendar_update, or if events are narratively grounded."
+    ),
+    "npc_creation_appropriate": (
+        "If new NPCs were created via character_updates, are they appropriate? "
+        "New NPCs should serve the narrative — not appear randomly. They should have "
+        "a distinct personality, reasonable name, and fit the campaign's setting/tone. "
+        "In on_rails campaigns, new NPCs should not be created at all. "
+        "Pass if no new NPCs, or if new NPCs are narratively justified and well-defined."
+    ),
 }
 
 

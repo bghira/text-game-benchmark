@@ -87,6 +87,32 @@ class TestCleanResponse:
         assert clean_response(text) == "no json here"
 
 
+class TestCleanResponseTruncation:
+    def test_repairs_single_missing_brace(self):
+        text = '{"key": "val"'
+        result = clean_response(text)
+        assert result.endswith("}")
+        data = json.loads(result)
+        assert data["key"] == "val"
+
+    def test_repairs_nested_missing_braces(self):
+        text = '{"outer": {"inner": "val"'
+        result = clean_response(text)
+        data = json.loads(result)
+        assert data["outer"]["inner"] == "val"
+
+    def test_repairs_deeply_nested(self):
+        text = '{"a": {"b": {"c": "d"'
+        result = clean_response(text)
+        data = json.loads(result)
+        assert data["a"]["b"]["c"] == "d"
+
+    def test_no_repair_if_already_valid(self):
+        text = '{"key": "val"}'
+        result = clean_response(text)
+        assert result == text
+
+
 class TestParseResponse:
     def test_valid_response(self):
         raw = json.dumps({

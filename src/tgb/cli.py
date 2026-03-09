@@ -28,6 +28,9 @@ def parse_model_spec(spec: str) -> tuple[str, str]:
     return parts[0], parts[1]
 
 
+SUPPORTED_PROVIDERS = ("ollama", "openai", "claude", "gemini", "codex", "opencode")
+
+
 def build_client(
     provider: str,
     model: str,
@@ -48,8 +51,23 @@ def build_client(
         )
         # Wrap to match CompletionClient protocol
         return _OpenAIClientAdapter(client)
+    elif provider == "claude":
+        from tgb.clients.cli_backends import ClaudeCLIClient
+        return ClaudeCLIClient(model=model or None)
+    elif provider == "gemini":
+        from tgb.clients.cli_backends import GeminiCLIClient
+        return GeminiCLIClient(model=model or None)
+    elif provider in ("codex", "codex-cli"):
+        from tgb.clients.cli_backends import CodexCLIClient
+        return CodexCLIClient(model=model or None)
+    elif provider in ("opencode", "opencode_cli"):
+        from tgb.clients.cli_backends import OpenCodeCLIClient
+        return OpenCodeCLIClient(model=model or None)
     else:
-        raise ValueError(f"Unknown provider '{provider}'. Supported: ollama, openai")
+        raise ValueError(
+            f"Unknown provider '{provider}'. "
+            f"Supported: {', '.join(SUPPORTED_PROVIDERS)}"
+        )
 
 
 class _OpenAIClientAdapter:

@@ -2,6 +2,14 @@
 
 Mirrors ZorkEmulator.build_prompt() but reads from benchmark config
 instead of DB-backed Campaign/Player objects.
+
+The engine now uses a three-stage prompt flow:
+  1. bootstrap — decides recent_turns receivers, no narration
+  2. research  — loads memory/SMS/planning tools, returns ready_to_write
+  3. final     — narrates the turn, returns JSON
+
+The benchmark always uses the "final" stage (single-shot), but the
+prompt builder tracks the new field ordering and constants for parity.
 """
 
 from __future__ import annotations
@@ -88,6 +96,62 @@ class AccumulatedState:
                 "turn": self.turn_number,
                 "visibility": turn_visibility,
             })
+
+        # Track calendar updates in campaign state
+        calendar_update = parsed_json.get("calendar_update")
+        if isinstance(calendar_update, dict):
+            calendar = self.campaign_state.setdefault("calendar", [])
+            if isinstance(calendar, list):
+                add_list = calendar_update.get("add")
+                if isinstance(add_list, list):
+                    for event in add_list:
+                        if isinstance(event, dict) and event.get("name"):
+                            calendar.append(dict(event))
+                remove_list = calendar_update.get("remove")
+                if isinstance(remove_list, list):
+                    remove_names = {str(n).lower() for n in remove_list if n}
+                    self.campaign_state["calendar"] = [
+                        e for e in calendar
+                        if not isinstance(e, dict) or
+                        str(e.get("name", "")).lower() not in remove_names
+                    ]
+
+        # Track give_item (just record it; engine handles actual transfer)
+        give_item = parsed_json.get("give_item")
+        if isinstance(give_item, dict):
+            item = give_item.get("item")
+            if item and isinstance(item, str):
+                # Remove from acting player's inventory if present
+                inv = self.player_state.get("inventory")
+                if isinstance(inv, list):
+                    item_lower = item.lower()
+                    self.player_state["inventory"] = [
+                        i for i in inv
+                        if not (isinstance(i, str) and i.lower() == item_lower)
+                    ]
+
+        # Track timer setting
+        timer_delay = parsed_json.get("set_timer_delay")
+        if timer_delay is not None:
+            self.campaign_state["_active_timer"] = {
+                "delay": timer_delay,
+                "event": parsed_json.get("set_timer_event", ""),
+                "interruptible": parsed_json.get("set_timer_interruptible", True),
+                "turn": self.turn_number,
+            }
+
+        # Track dice check, puzzle, minigame results
+        dice_check = parsed_json.get("dice_check")
+        if isinstance(dice_check, dict):
+            self.campaign_state["_last_dice_check"] = dict(dice_check)
+
+        puzzle_trigger = parsed_json.get("puzzle_trigger")
+        if isinstance(puzzle_trigger, dict):
+            self.campaign_state["_active_puzzle"] = dict(puzzle_trigger)
+
+        minigame_challenge = parsed_json.get("minigame_challenge")
+        if isinstance(minigame_challenge, dict):
+            self.campaign_state["_active_minigame"] = dict(minigame_challenge)
 
     def _apply_tool_call(self, data: dict[str, Any]) -> None:
         """Track subplot tool calls (plot_plan, chapter_plan, consequence_log)."""
@@ -192,7 +256,12 @@ def _dump_json(obj: Any) -> str:
 
 
 class PromptBuilder:
-    """Constructs system and user prompts matching ZorkEmulator.build_prompt() format."""
+    """Constructs system and user prompts matching ZorkEmulator.build_prompt() format.
+
+    Mirrors the engine's "final" stage prompt assembly, which is the
+    single-shot flow used by the benchmark. The field ordering and
+    system prompt composition track the engine's three-stage overhaul.
+    """
 
     @staticmethod
     def _effective_visibility_default(
@@ -234,8 +303,24 @@ class PromptBuilder:
         })
 
         # Build model state (campaign state minus internal keys)
+        # Mirrors ZorkEmulator.MODEL_STATE_EXCLUDE_KEYS
+        _exclude_keys = {
+            "game_time", "guardrails_enabled", "on_rails",
+            "last_narration", "room_scene_images", "scene_image_model",
+            "default_persona", "start_room", "story_outline",
+            "current_chapter", "current_scene", "setup_phase", "setup_data",
+            "speed_multiplier", "difficulty", "calendar",
+            "_calendar_reminders", "_auto_fix_counters",
+            "_memory_search_usage", "_sms_threads", "_sms_read_state",
+            "_sms_message_seq", "_turn_time_index", "_literary_styles",
+            "_active_puzzle", "_puzzle_result",
+            "_active_minigame", "_minigame_result", "_last_dice_check",
+            "_last_minigame_result",
+            # Room state keys the engine also excludes
+            "room_id", "room_title", "room_summary",
+        }
         model_state = {k: v for k, v in state.campaign_state.items()
-                       if k not in ("game_time", "guardrails_enabled", "on_rails")}
+                       if k not in _exclude_keys}
 
         # Difficulty
         difficulty = campaign.difficulty
@@ -289,8 +374,11 @@ class PromptBuilder:
                 "is_actor": True,
             }]
 
-        # Characters for prompt
-        characters_prompt = state.characters
+        # Characters for prompt — ranked by proximity and relevance,
+        # mirroring ZorkEmulator._build_characters_for_prompt()
+        characters_prompt = self._build_characters_for_prompt(
+            state.characters, player_state_prompt, state.recent_turns,
+        )
 
         # Recent turns text
         recent_text = ""
@@ -304,18 +392,52 @@ class PromptBuilder:
             recent_text = "\n---\n".join(lines)
 
         # Source material
-        source_docs_prompt = ""
+        source_payload: dict[str, Any] = {}
         if scenario.source_material and scenario.source_material.documents:
             docs_info = []
             for doc in scenario.source_material.documents:
                 docs_info.append({"key": doc.key, "format": doc.format, "summary": doc.summary})
-            source_docs_prompt = f"SOURCE_MATERIAL_DOCS: {_dump_json(docs_info)}\n"
+            source_payload = {
+                "available": True,
+                "docs": docs_info,
+                "keys": [],
+                "chunk_count": 0,
+            }
 
-        # Construct user prompt
-        memory_enabled = campaign.memory
+        # Build story context from chapters in campaign state
+        story_context = self._build_story_context(state.campaign_state, campaign.on_rails)
+
+        # Memory enabled — mirrors _memory_lookup_enabled_for_prompt()
+        memory_enabled = self._memory_lookup_enabled(
+            campaign.memory, state.summary, turn.action,
+            source_available=bool(source_payload.get("available")),
+        )
+
+        # Visibility default
         visibility_default = self._effective_visibility_default(
             turn.turn_visibility_default, player_state_prompt,
         ) if campaign.multi_player else "public"
+
+        # Response style note — use _turn_stage_note for final stage,
+        # falling back to _turn_response_style_note, then manual composition
+        _stage_fn = getattr(ZorkEmulator, "_turn_stage_note", None)
+        if callable(_stage_fn):
+            # Final stage = default stage
+            final_stage = getattr(ZorkEmulator, "PROMPT_STAGE_FINAL", "final")
+            response_style_note = _stage_fn(campaign.difficulty, final_stage)
+        else:
+            _style_fn = getattr(ZorkEmulator, "_turn_response_style_note", None)
+            if callable(_style_fn):
+                response_style_note = _style_fn(campaign.difficulty)
+            else:
+                response_style_note = getattr(ZorkEmulator, "RESPONSE_STYLE_NOTE", "")
+                _diff_fn = getattr(ZorkEmulator, "_difficulty_response_note", None)
+                if callable(_diff_fn):
+                    difficulty_note = _diff_fn(campaign.difficulty)
+                    if difficulty_note:
+                        response_style_note = f"{response_style_note}\n{difficulty_note}"
+
+        # ── User prompt (mirrors engine's field ordering) ──────────────
         user_prompt = (
             f"CAMPAIGN: {campaign.name}\n"
             f"PLAYER_ID: {player.user_id}\n"
@@ -323,26 +445,58 @@ class PromptBuilder:
             f"TURN_VISIBILITY_DEFAULT: {visibility_default}\n"
             f"GUARDRAILS_ENABLED: {str(campaign.guardrails).lower()}\n"
             f"RAILS_CONTEXT: {_dump_json(rails_context)}\n"
-            f"WORLD_SUMMARY: {state.summary}\n"
-            f"WORLD_STATE: {_dump_json(model_state)}\n"
+        )
+
+        # Source material comes before game_time in new engine ordering
+        if source_payload.get("available"):
+            user_prompt += (
+                f"SOURCE_MATERIAL_DOCS: {_dump_json(source_payload.get('docs') or [])}\n"
+                f"SOURCE_MATERIAL_KEYS: {_dump_json(source_payload.get('keys') or [])}\n"
+                f"SOURCE_MATERIAL_SNIPPET_COUNT: {source_payload.get('chunk_count')}\n"
+                f"SOURCE_MATERIAL_CHUNK_COUNT: {source_payload.get('chunk_count')}\n"
+            )
+            # Source material digests (engine renders these when available)
+            source_digests = source_payload.get("digests") or {}
+            for digest_key, digest_text in source_digests.items():
+                user_prompt += f"SOURCE_MATERIAL_DIGEST [{digest_key}]:\n{digest_text}\n"
+
+        user_prompt += (
             f"CURRENT_GAME_TIME: {_dump_json(game_time)}\n"
             f"SPEED_MULTIPLIER: {speed_mult}\n"
             f"DIFFICULTY: {difficulty}\n"
             f"ATTENTION_WINDOW_SECONDS: 600\n"
             f"CURRENTLY_ATTENTIVE_PLAYERS: {_dump_json([])}\n"
             f"ACTIVE_PLAYER_LOCATION: {_dump_json(active_location)}\n"
-            f"CALENDAR: {_dump_json({})}\n"
-            f"CALENDAR_REMINDERS:\n\n"
             f"MEMORY_LOOKUP_ENABLED: {str(memory_enabled).lower()}\n"
+            f"RECENT_TURNS_LOADED: true\n"
         )
-
-        if source_docs_prompt:
-            user_prompt += source_docs_prompt
 
         user_prompt += (
             f"WORLD_CHARACTERS: {_dump_json(characters_prompt)}\n"
             f"PLAYER_CARD: {_dump_json(player_card)}\n"
             f"PARTY_SNAPSHOT: {_dump_json(party_snapshot)}\n"
+        )
+
+        # Literary styles (after PARTY_SNAPSHOT, before story context)
+        literary_styles_text = self._literary_styles_for_prompt(
+            state.campaign_state, characters_prompt,
+        )
+        if literary_styles_text:
+            user_prompt += f"LITERARY_STYLES:\n{literary_styles_text}\n"
+
+        # Puzzle/minigame/dice system
+        puzzle_text = self._puzzle_system_for_prompt(state.campaign_state)
+        if puzzle_text:
+            user_prompt += f"{puzzle_text}\n"
+
+        # Final stage includes story context, summary, state, calendar, recent turns
+        if story_context:
+            user_prompt += f"STORY_CONTEXT:\n{story_context}\n"
+        user_prompt += (
+            f"WORLD_SUMMARY: {state.summary}\n"
+            f"WORLD_STATE: {_dump_json(model_state)}\n"
+            f"CALENDAR: {_dump_json({})}\n"
+            f"CALENDAR_REMINDERS:\n\n"
             f"RECENT_TURNS:\n{recent_text}\n"
         )
 
@@ -368,9 +522,19 @@ class PromptBuilder:
         if active_consequences:
             user_prompt += f"ACTIVE_CONSEQUENCES: {_dump_json(active_consequences[:12])}\n"
 
-        user_prompt += f"\nPLAYER_ACTION: {turn.action}\n"
+        # Prompt tail: mirrors _build_turn_prompt_tail() —
+        # action first, then response_style_note last
+        active_name = str(player_state_prompt.get("character_name") or "").strip()
+        action_label = f"PLAYER_ACTION ({active_name.upper()})" if active_name else "PLAYER_ACTION"
+        user_prompt += f"{action_label}: {turn.action}\n"
+        if response_style_note:
+            user_prompt += f"{response_style_note}\n"
 
-        # Construct system prompt
+        # ── System prompt (final-stage assembly) ───────────────────────
+        # In the engine's three-stage flow, the final stage system prompt
+        # contains ONLY SYSTEM_PROMPT + guardrails + on_rails. Tool prompts
+        # (memory, SMS, timer, calendar, roster) belong to the bootstrap
+        # and research stages. The benchmark mirrors the final stage exactly.
         system_prompt = ZorkEmulator.SYSTEM_PROMPT
 
         if campaign.guardrails:
@@ -381,37 +545,303 @@ class PromptBuilder:
             if on_rails_prompt:
                 system_prompt += on_rails_prompt
 
-        if memory_enabled:
-            system_prompt += ZorkEmulator.MEMORY_TOOL_PROMPT
-        else:
-            disabled = getattr(ZorkEmulator, "MEMORY_TOOL_DISABLED_PROMPT", "")
-            if disabled:
-                system_prompt += disabled
-
-        if campaign.timed_events:
-            timer_prompt = getattr(ZorkEmulator, "TIMER_TOOL_PROMPT", "")
-            if timer_prompt:
-                system_prompt += timer_prompt
-
-        calendar_prompt = getattr(ZorkEmulator, "CALENDAR_TOOL_PROMPT", "")
-        if calendar_prompt:
-            system_prompt += calendar_prompt
-
-        roster_prompt = getattr(ZorkEmulator, "ROSTER_PROMPT", "")
-        if roster_prompt:
-            system_prompt += roster_prompt
-
-        # Plot thread / chapter / consequence tool prompts
-        plot_prompt = getattr(ZorkEmulator, "PLOT_PLAN_PROMPT", "")
-        if plot_prompt:
-            system_prompt += plot_prompt
-
-        chapter_prompt = getattr(ZorkEmulator, "CHAPTER_PLAN_PROMPT", "")
-        if chapter_prompt and not campaign.on_rails:
-            system_prompt += chapter_prompt
-
-        consequence_prompt = getattr(ZorkEmulator, "CONSEQUENCE_LOG_PROMPT", "")
-        if consequence_prompt:
-            system_prompt += consequence_prompt
-
         return system_prompt, user_prompt
+
+    @staticmethod
+    def _build_story_context(
+        campaign_state: dict[str, Any],
+        on_rails: bool,
+    ) -> str | None:
+        """Build story context from chapters in campaign state.
+
+        Mirrors ZorkEmulator._build_story_context() which now renders
+        chapter/scene structure when chapters are present in state.
+        """
+        if on_rails:
+            # On-rails uses story_outline, not chapters
+            outline = campaign_state.get("story_outline")
+            if not isinstance(outline, dict):
+                return None
+            return _dump_json(outline)
+
+        chapters = campaign_state.get("chapters")
+        if isinstance(chapters, list) and chapters:
+            active_rows = [
+                row for row in chapters
+                if isinstance(row, dict)
+                and str(row.get("status") or "active").strip().lower() == "active"
+            ]
+            rows = active_rows[:4] if active_rows else [
+                row for row in chapters if isinstance(row, dict)
+            ][:4]
+            if rows:
+                current = rows[0]
+                lines: list[str] = []
+                lines.append(f"CURRENT CHAPTER: {current.get('title', 'Untitled')}")
+                lines.append(f"  Summary: {current.get('summary', '')}")
+                scenes = current.get("scenes") or []
+                current_scene_slug = str(current.get("current_scene") or "").strip()
+                if isinstance(scenes, list):
+                    for i, scene in enumerate(scenes):
+                        scene_slug = str(scene or "").strip()
+                        marker = " >>> CURRENT SCENE <<<" if scene_slug and scene_slug == current_scene_slug else ""
+                        label = scene_slug.replace("_", "-")
+                        parts = [p for p in label.split("-") if p]
+                        label = " ".join(p.capitalize() for p in parts)[:120] if parts else "Untitled"
+                        lines.append(f"  Scene {i + 1}: {label}{marker}")
+                if len(rows) > 1:
+                    lines.append("")
+                    for idx, row in enumerate(rows[1:4], start=1):
+                        heading = "NEXT CHAPTER" if idx == 1 else f"UPCOMING CHAPTER {idx}"
+                        lines.append(f"{heading}: {row.get('title', 'Untitled')}")
+                        summary = str(row.get("summary") or "").strip()
+                        if summary:
+                            lines.append(f"  Preview: {summary[:320]}")
+                while lines and not lines[-1]:
+                    lines.pop()
+                return "\n".join(lines) if lines else None
+
+        outline = campaign_state.get("story_outline")
+        if isinstance(outline, dict):
+            return _dump_json(outline)
+
+        return None
+
+    # ── Character filtering (mirrors engine) ──────────────────────
+
+    MAX_CHARACTERS_IN_PROMPT = 20
+    MAX_CHARACTERS_CHARS = 8000
+
+    @classmethod
+    def _build_characters_for_prompt(
+        cls,
+        characters: dict[str, dict[str, Any]],
+        player_state: dict[str, Any],
+        recent_turns: list[dict[str, Any]],
+    ) -> list[dict[str, Any]]:
+        """Filter and rank characters for prompt inclusion.
+
+        Mirrors ZorkEmulator._build_characters_for_prompt():
+        - Nearby characters (same location) get full data
+        - Recently mentioned characters get partial data
+        - Distant characters get minimal data
+        """
+        if not characters:
+            return []
+
+        player_location = str(player_state.get("location") or "").strip().lower()
+
+        # Build recent text for mention detection
+        recent_lower = ""
+        if recent_turns:
+            parts = []
+            for rt in recent_turns:
+                parts.append(rt.get("action", ""))
+                parts.append(rt.get("narration", ""))
+            recent_lower = " ".join(parts).lower()
+
+        nearby: list[dict[str, Any]] = []
+        mentioned: list[dict[str, Any]] = []
+        distant: list[dict[str, Any]] = []
+
+        for slug, char in characters.items():
+            if not isinstance(char, dict):
+                continue
+            char_location = str(char.get("location") or "").strip().lower()
+            char_name = str(char.get("name") or slug).strip().lower()
+            is_deceased = bool(char.get("deceased_reason"))
+
+            if not is_deceased and player_location and char_location == player_location:
+                entry = dict(char)
+                entry["_slug"] = slug
+                nearby.append(entry)
+            elif char_name in recent_lower or slug in recent_lower:
+                entry = {
+                    "_slug": slug,
+                    "name": char.get("name", slug),
+                    "speech_style": char.get("speech_style"),
+                    "literary_style": char.get("literary_style"),
+                    "location": char.get("location"),
+                    "current_status": char.get("current_status"),
+                    "allegiance": char.get("allegiance"),
+                }
+                if is_deceased:
+                    entry["deceased_reason"] = char.get("deceased_reason")
+                mentioned.append(entry)
+            else:
+                entry: dict[str, Any] = {"_slug": slug, "name": char.get("name", slug)}
+                if is_deceased:
+                    entry["deceased_reason"] = char.get("deceased_reason")
+                else:
+                    entry["location"] = char.get("location")
+                distant.append(entry)
+
+        result = nearby + mentioned + distant
+        result = result[:cls.MAX_CHARACTERS_IN_PROMPT]
+        return cls._fit_characters_to_budget(result, cls.MAX_CHARACTERS_CHARS)
+
+    @classmethod
+    def _fit_characters_to_budget(
+        cls,
+        characters_list: list[dict[str, Any]],
+        max_chars: int,
+    ) -> list[dict[str, Any]]:
+        """Truncate character list to fit within a JSON-serialized byte budget."""
+        while characters_list:
+            text = json.dumps(characters_list, ensure_ascii=True)
+            if len(text) <= max_chars:
+                return characters_list
+            characters_list = characters_list[:-1]
+        return []
+
+    # ── Literary styles ──────────────────────────────────────────
+
+    MAX_LITERARY_STYLES_PROMPT_CHARS = 4000
+
+    @classmethod
+    def _literary_styles_for_prompt(
+        cls,
+        campaign_state: dict[str, Any],
+        characters_for_prompt: list[dict[str, Any]],
+    ) -> str | None:
+        """Render literary style profiles for characters in prompt.
+
+        Mirrors ZorkEmulator._literary_styles_for_prompt().
+        """
+        styles = campaign_state.get("_literary_styles")
+        if not isinstance(styles, dict) or not styles:
+            return None
+
+        # Collect referenced styles from active characters
+        active_refs: set[str] = set()
+        for char in characters_for_prompt or []:
+            if not isinstance(char, dict):
+                continue
+            ref = str(char.get("literary_style") or "").strip()
+            if ref:
+                active_refs.add(ref)
+
+        def _sort_key(key: str) -> tuple[int, str]:
+            return (0 if key in active_refs else 1, key)
+
+        lines: list[str] = []
+        budget = cls.MAX_LITERARY_STYLES_PROMPT_CHARS
+        for key in sorted(styles.keys(), key=_sort_key):
+            entry = styles.get(key)
+            if not isinstance(entry, dict):
+                continue
+            profile = str(entry.get("profile") or "").strip()
+            if not profile:
+                continue
+            line = f"  {key}: {profile}"
+            if len(line) > budget:
+                break
+            lines.append(line)
+            budget -= len(line) + 1
+            if budget <= 0:
+                break
+        return "\n".join(lines) if lines else None
+
+    # ── Puzzle / minigame / dice system ──────────────────────────
+
+    @staticmethod
+    def _puzzle_system_for_prompt(campaign_state: dict[str, Any]) -> str | None:
+        """Render active puzzle, minigame, and dice check state for prompt.
+
+        Mirrors ZorkEmulator._puzzle_system_for_prompt().
+        """
+        parts: list[str] = []
+
+        puzzle_mode = campaign_state.get("puzzle_mode")
+        if puzzle_mode and puzzle_mode != "none":
+            parts.append(f"PUZZLE_CONFIG:\n  mode: {puzzle_mode}")
+
+        active_puzzle = campaign_state.get("_active_puzzle")
+        if isinstance(active_puzzle, dict):
+            lines = ["ACTIVE_PUZZLE:"]
+            for k, v in active_puzzle.items():
+                if not str(k).startswith("_"):
+                    lines.append(f"  {k}: {v}")
+            parts.append("\n".join(lines))
+
+        puzzle_result = campaign_state.get("_puzzle_result")
+        if isinstance(puzzle_result, dict):
+            lines = ["PUZZLE_RESULT:"]
+            for k, v in puzzle_result.items():
+                lines.append(f"  {k}: {v}")
+            parts.append("\n".join(lines))
+
+        active_minigame = campaign_state.get("_active_minigame")
+        if isinstance(active_minigame, dict):
+            lines = ["ACTIVE_MINIGAME:"]
+            for k, v in active_minigame.items():
+                if not str(k).startswith("_"):
+                    lines.append(f"  {k}: {v}")
+            parts.append("\n".join(lines))
+
+        minigame_result = campaign_state.get("_minigame_result")
+        if isinstance(minigame_result, dict):
+            lines = ["MINIGAME_RESULT:"]
+            for k, v in minigame_result.items():
+                lines.append(f"  {k}: {v}")
+            parts.append("\n".join(lines))
+
+        last_dice = campaign_state.get("_last_dice_check")
+        if isinstance(last_dice, dict):
+            attr = last_dice.get("attribute", "skill")
+            roll_val = last_dice.get("roll", 0)
+            mod = last_dice.get("modifier", 0)
+            total = last_dice.get("total", 0)
+            dc = last_dice.get("dc", 0)
+            success = last_dice.get("success", False)
+            context = last_dice.get("context", "")
+            parts.append(
+                f"LAST_DICE_CHECK:\n"
+                f"  attribute: {attr}\n"
+                f"  roll: {roll_val} + {mod} = {total} vs DC {dc}\n"
+                f"  result: {'success' if success else 'failure'}\n"
+                f'  context: "{context}"'
+            )
+
+        return "\n\n".join(parts) if parts else None
+
+    # ── Memory lookup ────────────────────────────────────────────
+
+    MEMORY_LOOKUP_MIN_SUMMARY_CHARS = 200
+    _MEMORY_LOOKUP_MARKERS = (
+        "remember", "recall", "what happened", "previously",
+        "backstory", "history", "who is", "what is",
+        "according to", "from the book", "from source",
+        "source material", "canon", "lore", "look up",
+    )
+
+    @classmethod
+    def _memory_lookup_enabled(
+        cls,
+        campaign_memory_flag: bool,
+        summary: str,
+        action: str,
+        *,
+        source_available: bool = False,
+    ) -> bool:
+        """Determine if memory lookup should be enabled for this turn.
+
+        Mirrors ZorkEmulator._memory_lookup_enabled_for_prompt():
+        - True if summary is long enough to warrant memory search
+        - True if source material available and action requests lookup
+        - False otherwise (even if campaign has memory enabled)
+        """
+        if not campaign_memory_flag:
+            return False
+
+        summary_len = len(str(summary or "").strip())
+        if summary_len >= cls.MEMORY_LOOKUP_MIN_SUMMARY_CHARS:
+            return True
+
+        if source_available:
+            text = " ".join(str(action or "").strip().lower().split())
+            if text and not re.match(r"\s*\[ooc\b", text, re.IGNORECASE):
+                if any(marker in text for marker in cls._MEMORY_LOOKUP_MARKERS):
+                    return True
+
+        return False

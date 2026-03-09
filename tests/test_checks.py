@@ -128,6 +128,48 @@ class TestXpRange:
         assert not result.passed
 
 
+class TestXpRangeEdgeCases:
+    def test_fail_non_integer_float(self):
+        """Floats like 5.7 should fail — xp must be a whole number."""
+        result = check_xp_range(
+            _make_parsed({"xp_awarded": 5.7}), _make_scenario(), TURN, _make_state(), EMPTY_PARAMS,
+        )
+        assert not result.passed
+        assert "float" in result.detail
+
+    def test_pass_integer_float(self):
+        """5.0 is acceptable since int(5.0) == 5."""
+        result = check_xp_range(
+            _make_parsed({"xp_awarded": 5.0}), _make_scenario(), TURN, _make_state(), EMPTY_PARAMS,
+        )
+        assert result.passed
+
+    def test_fail_bool(self):
+        """Booleans are technically ints in Python but should be rejected."""
+        result = check_xp_range(
+            _make_parsed({"xp_awarded": True}), _make_scenario(), TURN, _make_state(), EMPTY_PARAMS,
+        )
+        assert not result.passed
+
+    def test_fail_negative(self):
+        result = check_xp_range(
+            _make_parsed({"xp_awarded": -1}), _make_scenario(), TURN, _make_state(), EMPTY_PARAMS,
+        )
+        assert not result.passed
+
+    def test_pass_boundary_zero(self):
+        result = check_xp_range(
+            _make_parsed({"xp_awarded": 0}), _make_scenario(), TURN, _make_state(), EMPTY_PARAMS,
+        )
+        assert result.passed
+
+    def test_pass_boundary_ten(self):
+        result = check_xp_range(
+            _make_parsed({"xp_awarded": 10}), _make_scenario(), TURN, _make_state(), EMPTY_PARAMS,
+        )
+        assert result.passed
+
+
 class TestNarrationLength:
     def test_pass(self):
         narration = "You enter a dark room. A candle flickers on the table."

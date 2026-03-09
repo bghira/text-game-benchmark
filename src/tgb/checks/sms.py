@@ -20,6 +20,7 @@ import re
 from typing import Any
 
 from tgb.checks.base import CheckResult
+from tgb.checks.limits import SMS_FIELD_MAX_CHARS, SMS_MESSAGE_MAX_CHARS, SMS_DELAY_MIN, SMS_DELAY_MAX
 from tgb.config import Scenario, TurnSpec
 from tgb.prompt_builder import AccumulatedState
 from tgb.response_parser import ParsedResponse
@@ -38,8 +39,10 @@ def check_sms_tool_used(
         expect_sms_tool: str — specific tool expected ("sms_read", "sms_write", "sms_list", "sms_schedule")
     """
     action_lower = turn.action.lower()
-    phone_keywords = ["text", "sms", "message", "phone", "call", "ring", "dial"]
-    action_involves_phone = any(kw in action_lower for kw in phone_keywords)
+    action_involves_phone = bool(re.search(
+        r"\b(?:text|sms|message|phone|call|ring|dial)\b",
+        action_lower,
+    ))
 
     expect_tool = params.get("expect_sms_tool", "")
 
@@ -123,7 +126,12 @@ def check_sms_write_fields_valid(
             issues.append(f"'{field}' missing or empty")
 
     # Length limits
-    for field, limit in [("thread", 80), ("from", 80), ("to", 80), ("message", 500)]:
+    for field, limit in [
+        ("thread", SMS_FIELD_MAX_CHARS),
+        ("from", SMS_FIELD_MAX_CHARS),
+        ("to", SMS_FIELD_MAX_CHARS),
+        ("message", SMS_MESSAGE_MAX_CHARS),
+    ]:
         val = data.get(field, "")
         if isinstance(val, str) and len(val) > limit:
             issues.append(f"'{field}' is {len(val)} chars (max {limit})")
@@ -137,8 +145,8 @@ def check_sms_write_fields_valid(
             issues.append(f"delay_seconds is {type(delay).__name__}, not int")
         else:
             delay_int = int(delay)
-            if delay_int < 0 or delay_int > 86400:
-                issues.append(f"delay_seconds={delay_int} outside [0, 86400]")
+            if delay_int < SMS_DELAY_MIN or delay_int > SMS_DELAY_MAX:
+                issues.append(f"delay_seconds={delay_int} outside [{SMS_DELAY_MIN}, {SMS_DELAY_MAX}]")
 
     if issues:
         return CheckResult(

@@ -14,6 +14,11 @@ import re
 from typing import Any
 
 from tgb.checks.base import CheckResult
+from tgb.checks.limits import (
+    VISIBILITY_REASON_MAX_CHARS,
+    CALENDAR_NAME_MAX_CHARS,
+    CALENDAR_TARGET_MAX_CHARS,
+)
 from tgb.config import Scenario, TurnSpec
 from tgb.prompt_builder import AccumulatedState, _player_slug_key
 from tgb.response_parser import ParsedResponse
@@ -110,14 +115,16 @@ def check_visibility_fields_valid(
             for i, slug in enumerate(npc_slugs):
                 if not isinstance(slug, str):
                     issues.append(f"npc_slugs[{i}] not a string")
+                elif not _slug_valid(slug):
+                    issues.append(f"npc_slugs[{i}] '{slug}' not valid kebab-case")
 
     # reason validation
     reason = visibility.get("reason")
     if reason is not None:
         if not isinstance(reason, str):
             issues.append("reason must be a string")
-        elif len(reason) > 240:
-            issues.append(f"reason exceeds 240 chars ({len(reason)})")
+        elif len(reason) > VISIBILITY_REASON_MAX_CHARS:
+            issues.append(f"reason exceeds {VISIBILITY_REASON_MAX_CHARS} chars ({len(reason)})")
 
     # limited scope requires player_slugs
     if scope == "limited":
@@ -420,7 +427,7 @@ def check_visibility_no_narration_leak(
         )
 
     narration = parsed.parsed_json.get("narration", "")
-    if not narration:
+    if not isinstance(narration, str) or not narration.strip():
         return CheckResult(
             check_id="visibility_no_narration_leak",
             passed=True,
@@ -453,9 +460,9 @@ def check_visibility_no_narration_leak(
         name = entry.get("character_name", entry.get("name", ""))
         slug = entry.get("player_slug", _player_slug_key(name)) if name else ""
         if slug in excluded and name:
-            # Check if their name appears in the narration
-            name_lower = name.lower()
-            if name_lower in narration_lower:
+            # Use word-boundary matching to avoid false positives
+            # (e.g. "Jack" matching "Hijack")
+            if re.search(r"\b" + re.escape(name.lower()) + r"\b", narration_lower):
                 leaked.append(name)
 
     if leaked:
@@ -534,8 +541,8 @@ def check_calendar_known_by_valid(
         for j, name in enumerate(known_by):
             if not isinstance(name, str) or not name.strip():
                 issues.append(f"add[{i}].known_by[{j}] empty or not a string")
-            elif len(name) > 80:
-                issues.append(f"add[{i}].known_by[{j}] exceeds 80 chars")
+            elif len(name) > CALENDAR_NAME_MAX_CHARS:
+                issues.append(f"add[{i}].known_by[{j}] exceeds {CALENDAR_NAME_MAX_CHARS} chars")
             elif known_names and name.lower() not in known_names:
                 issues.append(f"add[{i}].known_by '{name}' not a known character")
 
@@ -613,8 +620,8 @@ def check_calendar_target_player_valid(
                 target_str = str(target or "").strip()
                 if not target_str:
                     issues.append(f"add[{i}].{key}[{j}] is empty")
-                elif len(target_str) > 160:
-                    issues.append(f"add[{i}].{key}[{j}] exceeds 160 chars")
+                elif len(target_str) > CALENDAR_TARGET_MAX_CHARS:
+                    issues.append(f"add[{i}].{key}[{j}] exceeds {CALENDAR_TARGET_MAX_CHARS} chars")
                 elif known_refs and target_str.lower() not in known_refs:
                     issues.append(f"add[{i}].{key} '{target_str}' not a known player")
 
@@ -703,7 +710,7 @@ def check_sms_not_in_narration(
     either — the SMS log is the canonical record.
     """
     narration = parsed.parsed_json.get("narration", "")
-    if not isinstance(narration, str) or not narration:
+    if not isinstance(narration, str) or not narration.strip():
         return CheckResult(
             check_id="sms_not_in_narration",
             passed=True,
@@ -746,9 +753,10 @@ def check_sms_turn_private(
     scope should be private or limited — never public or local.
     """
     action_lower = turn.action.lower()
-    phone_keywords = ["text ", "sms ", "message ", "send text", "send sms",
-                       "i text", "i message", "phone ", "call "]
-    is_phone_action = any(kw in action_lower for kw in phone_keywords)
+    is_phone_action = bool(re.search(
+        r"\b(?:text|sms|message|send\s+text|send\s+sms|i\s+text|i\s+message|phone|call)\b",
+        action_lower,
+    ))
 
     if not is_phone_action:
         return CheckResult(
