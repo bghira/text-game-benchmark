@@ -28,7 +28,22 @@ def parse_model_spec(spec: str) -> tuple[str, str]:
     return parts[0], parts[1]
 
 
-SUPPORTED_PROVIDERS = ("ollama", "openai", "claude", "gemini", "codex", "opencode")
+SUPPORTED_PROVIDERS = (
+    "ollama", "openai", "claude", "gemini",
+    "codex", "codex-cli",
+    "opencode", "opencode_cli",
+)
+
+# Normalize aliases to canonical provider names
+_PROVIDER_ALIASES: dict[str, str] = {
+    "codex-cli": "codex",
+    "opencode_cli": "opencode",
+}
+
+
+def _normalize_provider(provider: str) -> str:
+    """Normalize provider alias to canonical name."""
+    return _PROVIDER_ALIASES.get(provider, provider)
 
 
 def build_client(
@@ -39,6 +54,8 @@ def build_client(
     openai_api_key: str,
 ):
     """Build a completion client for the given provider."""
+    provider = _normalize_provider(provider)
+
     if provider == "ollama":
         from tgb.clients.ollama_client import OllamaClient
         return OllamaClient(model=model, base_url=ollama_url)
@@ -57,10 +74,10 @@ def build_client(
     elif provider == "gemini":
         from tgb.clients.cli_backends import GeminiCLIClient
         return GeminiCLIClient(model=model or None)
-    elif provider in ("codex", "codex-cli"):
+    elif provider == "codex":
         from tgb.clients.cli_backends import CodexCLIClient
         return CodexCLIClient(model=model or None)
-    elif provider in ("opencode", "opencode_cli"):
+    elif provider == "opencode":
         from tgb.clients.cli_backends import OpenCodeCLIClient
         return OpenCodeCLIClient(model=model or None)
     else:

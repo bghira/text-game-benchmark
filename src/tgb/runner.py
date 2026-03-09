@@ -228,13 +228,11 @@ def run_scenario(
         parsed = parse_response(raw_text)
         tool_round = 0
         accumulated_timing = timing
-        tool_calls_log: list[str] = []
 
         # Tool-call loop: if the model returns a tool_call, feed back
         # a synthetic result and re-call until we get a final response
         while parsed.is_tool_call and tool_round < MAX_TOOL_ROUNDS:
             tool_name = parsed.parsed_json.get("tool_call", "unknown")
-            tool_calls_log.append(tool_name)
 
             if verbose:
                 print(f"    Tool round {tool_round+1}: {tool_name}", file=sys.stderr)

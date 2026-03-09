@@ -95,7 +95,9 @@ def check_calendar_update_valid(
                 tr = event.get("time_remaining")
                 if tr is not None:
                     if isinstance(tr, bool) or not isinstance(tr, (int, float)):
-                        issues.append(f"add[{i}].time_remaining must be a number")
+                        issues.append(f"add[{i}].time_remaining must be a positive integer")
+                    elif isinstance(tr, float) and tr != int(tr):
+                        issues.append(f"add[{i}].time_remaining must be an integer, got {tr}")
                     elif int(tr) < 1:
                         issues.append(f"add[{i}].time_remaining must be >= 1")
 
@@ -112,10 +114,15 @@ def check_calendar_update_valid(
                     elif not all(isinstance(k, str) for k in kb):
                         issues.append(f"add[{i}].known_by entries must be strings")
 
-                # Check for legacy fields
-                legacy_present = set(event.keys()) & LEGACY_FIELDS
+                # Reject unknown keys
+                unknown_keys = set(event.keys()) - EVENT_VALID_FIELDS
+                # Separate legacy fields for clearer messaging
+                legacy_present = unknown_keys & LEGACY_FIELDS
+                other_unknown = unknown_keys - LEGACY_FIELDS
                 if legacy_present:
                     issues.append(f"add[{i}] has legacy fields {sorted(legacy_present)} — use time_remaining/time_unit instead")
+                if other_unknown:
+                    issues.append(f"add[{i}] has unknown fields {sorted(other_unknown)}")
 
     # Validate "remove" entries
     remove_list = cal.get("remove")

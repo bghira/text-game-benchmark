@@ -495,7 +495,7 @@ class PromptBuilder:
         user_prompt += (
             f"WORLD_SUMMARY: {state.summary}\n"
             f"WORLD_STATE: {_dump_json(model_state)}\n"
-            f"CALENDAR: {_dump_json({})}\n"
+            f"CALENDAR: {_dump_json(state.campaign_state.get('calendar', []))}\n"
             f"CALENDAR_REMINDERS:\n\n"
             f"RECENT_TURNS:\n{recent_text}\n"
         )

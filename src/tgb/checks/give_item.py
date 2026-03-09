@@ -53,19 +53,25 @@ def check_give_item_valid(
     if not item or not isinstance(item, str) or not item.strip():
         issues.append("'item' is missing or empty")
 
-    # Must have at least one recipient reference
+    # Must have exactly one recipient reference
     to_actor = gi.get("to_actor_id")
     to_mention = gi.get("to_discord_mention")
-    if not to_actor and not to_mention:
+    has_actor = to_actor is not None
+    has_mention = to_mention is not None
+    if not has_actor and not has_mention:
         issues.append("need 'to_actor_id' or 'to_discord_mention'")
-    else:
-        if to_actor is not None and not isinstance(to_actor, (str, int)):
+    elif has_actor and has_mention:
+        issues.append("provide exactly one of 'to_actor_id' or 'to_discord_mention', not both")
+    if has_actor:
+        if isinstance(to_actor, bool):
+            issues.append("to_actor_id must not be a bool")
+        elif not isinstance(to_actor, (str, int)):
             issues.append(f"to_actor_id is {type(to_actor).__name__}, expected str or int")
-        if to_mention is not None:
-            if not isinstance(to_mention, str):
-                issues.append(f"to_discord_mention is {type(to_mention).__name__}, expected str")
-            elif not DISCORD_MENTION_PATTERN.match(to_mention):
-                issues.append(f"to_discord_mention '{to_mention}' not a valid mention format")
+    if has_mention:
+        if not isinstance(to_mention, str):
+            issues.append(f"to_discord_mention is {type(to_mention).__name__}, expected str")
+        elif not DISCORD_MENTION_PATTERN.match(to_mention):
+            issues.append(f"to_discord_mention '{to_mention}' not a valid mention format")
 
     if issues:
         return CheckResult(

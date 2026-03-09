@@ -26,9 +26,6 @@ CREATION_REQUIRED_FIELDS = {"name"}
 # All valid fields for character_updates entries
 ALL_VALID_FIELDS = IMMUTABLE_FIELDS | MUTABLE_FIELDS
 
-# Deletion sentinels
-_DELETION_SENTINELS = {None, "delete", "remove"}
-
 
 def check_npc_slug_valid(
     parsed: ParsedResponse,
@@ -170,10 +167,12 @@ def check_npc_update_fields_valid(
     state: AccumulatedState,
     params: dict[str, Any],
 ) -> CheckResult:
-    """Check that updates to existing NPCs only use mutable fields.
+    """Check that character_updates use only valid fields.
 
-    New NPCs may use any valid field. Existing NPCs should only update
-    mutable fields (location, current_status, allegiance, etc.).
+    New NPCs may use any valid field (immutable + mutable).
+    Existing NPCs should only use mutable fields, unless re-asserting
+    an immutable field with its current value (which is harmless).
+    Unknown fields are rejected for both new and existing NPCs.
     """
     char_updates = parsed.parsed_json.get("character_updates")
     if not isinstance(char_updates, dict) or not char_updates:
@@ -187,21 +186,24 @@ def check_npc_update_fields_valid(
     issues: list[str] = []
     for slug, data in char_updates.items():
         if not isinstance(data, dict):
-            # Deletion sentinel (null, "delete", "remove") — skip
+            # Deletion sentinel (null) — skip
             continue
 
+        # Unknown fields are invalid for both new and existing NPCs
+        unknown_keys = set(data.keys()) - ALL_VALID_FIELDS
+        if unknown_keys:
+            issues.append(f"{slug} has unknown fields: {sorted(unknown_keys)}")
+
         if slug in state.characters:
-            # Existing NPC — only mutable fields allowed
-            # (immutable re-assertion with same value is OK and handled by
-            # npc_immutable_preserved, but unknown fields are flagged here)
-            invalid_keys = set(data.keys()) - ALL_VALID_FIELDS
-            if invalid_keys:
-                issues.append(f"{slug} has unknown fields: {sorted(invalid_keys)}")
-        else:
-            # New NPC — all valid fields allowed
-            invalid_keys = set(data.keys()) - ALL_VALID_FIELDS
-            if invalid_keys:
-                issues.append(f"{slug} has unknown fields: {sorted(invalid_keys)}")
+            # Existing NPC — only mutable fields or re-assertion of immutable
+            existing = state.characters[slug]
+            for field in IMMUTABLE_FIELDS:
+                if field in data:
+                    original = existing.get(field)
+                    if original is not None and data[field] != original:
+                        issues.append(
+                            f"{slug}.{field} is immutable and cannot be changed"
+                        )
 
     if issues:
         return CheckResult(

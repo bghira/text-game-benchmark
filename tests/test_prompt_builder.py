@@ -72,6 +72,25 @@ class TestAccumulatedStateCalendar:
         assert calendar[0]["name"] == "new-event"
 
 
+class TestCalendarRenderedInPrompt:
+    def test_calendar_data_in_prompt(self):
+        """CALENDAR in prompt should contain tracked calendar events."""
+        scenario = _make_scenario(
+            campaign=CampaignSetup(name="test"),
+        )
+        state = AccumulatedState(scenario)
+        state.apply({
+            "calendar_update": {
+                "add": [{"name": "festival", "time_remaining": 3, "time_unit": "days"}],
+            },
+        })
+        builder = PromptBuilder()
+        _, user_prompt = builder.build(scenario, TurnSpec(action="look"), state)
+        # The calendar line should contain the tracked event, not {}
+        assert "festival" in user_prompt
+        assert 'CALENDAR: []' not in user_prompt
+
+
 class TestAccumulatedStateGiveItem:
     def test_give_item_removes_from_inventory(self):
         state = _make_state()

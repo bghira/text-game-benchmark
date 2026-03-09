@@ -191,6 +191,34 @@ class TestCalendarUpdateValid:
         result = check_calendar_update_valid(parsed, _make_scenario(), TURN, _make_state(), P)
         assert not result.passed
 
+    def test_fractional_time_remaining_rejected(self):
+        parsed = _make_parsed({"calendar_update": {
+            "add": [{"name": "x", "time_remaining": 1.5, "time_unit": "hours"}],
+        }})
+        result = check_calendar_update_valid(parsed, _make_scenario(), TURN, _make_state(), P)
+        assert not result.passed
+        assert "integer" in result.detail
+
+    def test_whole_float_time_remaining_accepted(self):
+        parsed = _make_parsed({"calendar_update": {
+            "add": [{"name": "x", "time_remaining": 3.0, "time_unit": "days"}],
+        }})
+        result = check_calendar_update_valid(parsed, _make_scenario(), TURN, _make_state(), P)
+        assert result.passed
+
+    def test_unknown_event_key_rejected(self):
+        parsed = _make_parsed({"calendar_update": {
+            "add": [{
+                "name": "x",
+                "time_remaining": 1,
+                "time_unit": "hours",
+                "bogus_field": "bad",
+            }],
+        }})
+        result = check_calendar_update_valid(parsed, _make_scenario(), TURN, _make_state(), P)
+        assert not result.passed
+        assert "unknown fields" in result.detail
+
 
 class TestCalendarNoLegacyFields:
     def test_no_legacy(self):
@@ -291,6 +319,33 @@ class TestGiveItemValid:
         parsed = _make_parsed({"give_item": "key"})
         result = check_give_item_valid(parsed, _make_scenario(), TURN, _make_state(), P)
         assert not result.passed
+
+    def test_bool_actor_id_rejected(self):
+        parsed = _make_parsed({"give_item": {
+            "item": "key",
+            "to_actor_id": True,
+        }})
+        result = check_give_item_valid(parsed, _make_scenario(), TURN, _make_state(), P)
+        assert not result.passed
+        assert "bool" in result.detail
+
+    def test_both_recipients_rejected(self):
+        parsed = _make_parsed({"give_item": {
+            "item": "key",
+            "to_actor_id": "123",
+            "to_discord_mention": "<@456>",
+        }})
+        result = check_give_item_valid(parsed, _make_scenario(), TURN, _make_state(), P)
+        assert not result.passed
+        assert "exactly one" in result.detail
+
+    def test_int_actor_id_accepted(self):
+        parsed = _make_parsed({"give_item": {
+            "item": "key",
+            "to_actor_id": 42,
+        }})
+        result = check_give_item_valid(parsed, _make_scenario(), TURN, _make_state(), P)
+        assert result.passed
 
 
 class TestGiveItemNoDoubleRemove:
@@ -407,6 +462,27 @@ class TestNpcUpdateFieldsValid:
         data = {field: "test" for field in ALL_VALID_FIELDS}
         parsed = _make_parsed({"character_updates": {"new-npc": data}})
         result = check_npc_update_fields_valid(parsed, _make_scenario(), TURN, _make_state(), P)
+        assert result.passed
+
+    def test_immutable_change_on_existing_rejected(self):
+        """Changing an immutable field on an existing NPC should fail."""
+        state = _make_state()
+        state.characters["guard"] = {"name": "Guard", "personality": "stern"}
+        parsed = _make_parsed({"character_updates": {
+            "guard": {"personality": "friendly"},
+        }})
+        result = check_npc_update_fields_valid(parsed, _make_scenario(), TURN, state, P)
+        assert not result.passed
+        assert "immutable" in result.detail
+
+    def test_immutable_reassertion_on_existing_accepted(self):
+        """Re-asserting the same immutable value on an existing NPC is OK."""
+        state = _make_state()
+        state.characters["guard"] = {"name": "Guard", "personality": "stern"}
+        parsed = _make_parsed({"character_updates": {
+            "guard": {"personality": "stern"},
+        }})
+        result = check_npc_update_fields_valid(parsed, _make_scenario(), TURN, state, P)
         assert result.passed
 
 

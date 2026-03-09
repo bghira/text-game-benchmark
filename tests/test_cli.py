@@ -2,7 +2,7 @@
 
 import pytest
 
-from tgb.cli import parse_model_spec, SUPPORTED_PROVIDERS
+from tgb.cli import parse_model_spec, SUPPORTED_PROVIDERS, _normalize_provider
 
 
 class TestParseModelSpec:
@@ -49,3 +49,20 @@ class TestSupportedProviders:
         assert "gemini" in SUPPORTED_PROVIDERS
         assert "codex" in SUPPORTED_PROVIDERS
         assert "opencode" in SUPPORTED_PROVIDERS
+
+    def test_aliases_listed(self):
+        assert "codex-cli" in SUPPORTED_PROVIDERS
+        assert "opencode_cli" in SUPPORTED_PROVIDERS
+
+
+class TestNormalizeProvider:
+    def test_codex_cli_alias(self):
+        assert _normalize_provider("codex-cli") == "codex"
+
+    def test_opencode_cli_alias(self):
+        assert _normalize_provider("opencode_cli") == "opencode"
+
+    def test_canonical_unchanged(self):
+        assert _normalize_provider("ollama") == "ollama"
+        assert _normalize_provider("codex") == "codex"
+        assert _normalize_provider("opencode") == "opencode"
