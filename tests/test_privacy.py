@@ -211,6 +211,15 @@ class TestVisibilityFieldsValid:
         result = check_visibility_fields_valid(parsed, _make_scenario(), TURN, _make_state(), EMPTY_PARAMS)
         assert result.passed
 
+    def test_bad_npc_slug(self):
+        parsed = _make_parsed({"turn_visibility": {
+            "scope": "public",
+            "npc_slugs": ["Lena Marquez"],
+        }})
+        result = check_visibility_fields_valid(parsed, _make_scenario(), TURN, _make_state(), EMPTY_PARAMS)
+        assert not result.passed
+        assert "kebab-case" in result.detail
+
 
 # ── visibility_scope_present ─────────────────────────────────────────
 
@@ -440,6 +449,50 @@ class TestVisibilityNoNarrationLeak:
         result = check_visibility_no_narration_leak(parsed, scenario, TURN, state, EMPTY_PARAMS)
         assert not result.passed
         assert "Vivian Cross" in result.detail
+
+    def test_pass_no_false_positive_on_substring(self):
+        """'Jack' in narration should not match when it's part of 'Hijack'."""
+        scenario = _mp_scenario()
+        state = _make_state(scenario)
+        parsed = _make_parsed({
+            "turn_visibility": {
+                "scope": "private",
+                "player_slugs": ["vivian-cross"],
+            },
+            "narration": "Vivian attempts to hijack mallory's attention with a witty remark.",
+        })
+        result = check_visibility_no_narration_leak(parsed, scenario, TURN, state, EMPTY_PARAMS)
+        # "Jack Mallory" is excluded, but "hijack mallory" shouldn't match
+        assert result.passed
+
+    def test_fail_word_boundary_match(self):
+        """Actual name should still be caught even with word boundaries."""
+        scenario = _mp_scenario()
+        state = _make_state(scenario)
+        parsed = _make_parsed({
+            "turn_visibility": {
+                "scope": "private",
+                "player_slugs": ["vivian-cross"],
+            },
+            "narration": "Meanwhile, Jack Mallory is seen entering the bar.",
+        })
+        result = check_visibility_no_narration_leak(parsed, scenario, TURN, state, EMPTY_PARAMS)
+        assert not result.passed
+        assert "Jack Mallory" in result.detail
+
+    def test_pass_whitespace_only_narration(self):
+        """Whitespace-only narration should not trigger leak check."""
+        scenario = _mp_scenario()
+        state = _make_state(scenario)
+        parsed = _make_parsed({
+            "turn_visibility": {
+                "scope": "private",
+                "player_slugs": ["vivian-cross"],
+            },
+            "narration": "   ",
+        })
+        result = check_visibility_no_narration_leak(parsed, scenario, TURN, state, EMPTY_PARAMS)
+        assert result.passed
 
     def test_pass_limited_with_included_player(self):
         scenario = _mp_scenario()

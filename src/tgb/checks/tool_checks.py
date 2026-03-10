@@ -80,8 +80,11 @@ def check_tool_format_valid(
         "sms_write": ["thread", "from", "to", "message"],
         "sms_read": ["thread"],
         "sms_list": [],
+        "sms_schedule": ["thread", "from", "to", "message", "delay_seconds"],
         "name_generate": [],
         "source_browse": [],
+        "recent_turns": ["player_slugs", "npc_slugs"],
+        "ready_to_write": [],
     }
 
     required_keys = params.get("required_keys", default_keys_map.get(tool_name, []))
@@ -95,8 +98,9 @@ def check_tool_format_valid(
             category="tool_usage",
         )
 
-    # Check no extra keys besides tool_call + expected
-    allowed = {"tool_call", "category"} | set(required_keys)
+    # Check no extra keys besides tool_call + expected + known optional
+    optional_keys = {"category", "limit"}
+    allowed = {"tool_call"} | optional_keys | set(required_keys)
     extra = [k for k in data if k not in allowed]
     if extra:
         return CheckResult(

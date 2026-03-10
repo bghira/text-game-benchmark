@@ -1,7 +1,15 @@
-"""Scenario runner — orchestrates scenario → model → judge → results."""
+"""Scenario runner — orchestrates scenario → model → judge → results.
+
+Supports the engine's multi-round tool-call flow: the model may return
+tool_call responses (recent_turns, ready_to_write, memory_search, etc.)
+before emitting the final narration JSON. The runner loops up to
+MAX_TOOL_ROUNDS times, feeding synthetic tool results back, before
+collecting the final response for checks and grading.
+"""
 
 from __future__ import annotations
 
+import json
 import sys
 from typing import Any, Protocol
 
@@ -15,6 +23,9 @@ from tgb.results import ActionResult, ScenarioResult
 from tgb.rubric import Rubric, RubricGrader
 from tgb.clients.ollama_client import TimingData
 
+# Maximum tool-call rounds before forcing final response
+MAX_TOOL_ROUNDS = 4
+
 
 class CompletionClient(Protocol):
     """Protocol for model completion clients."""
@@ -25,6 +36,103 @@ class CompletionClient(Protocol):
         user_prompt: str,
         **opts: Any,
     ) -> tuple[str, TimingData]: ...
+
+
+# ── Synthetic tool results ─────────────────────────────────────────
+
+def _synthetic_tool_result(parsed_json: dict[str, Any], state: AccumulatedState) -> str:
+    """Generate a synthetic tool result for a tool_call response.
+
+    In the real engine, tool calls hit the database/memory layer. For
+    benchmarking we return plausible stub results so the model can
+    proceed to the final narration round.
+    """
+    tool = parsed_json.get("tool_call", "")
+
+    if tool == "recent_turns":
+        # Return existing recent_turns from scenario state
+        turns = []
+        for rt in state.recent_turns[-8:]:
+            turns.append({
+                "tag": rt.get("tag", ""),
+                "action": rt.get("action", ""),
+                "narration": rt.get("narration", ""),
+            })
+        return json.dumps({
+            "tool_result": "recent_turns",
+            "turns": turns,
+            "count": len(turns),
+        }, ensure_ascii=False)
+
+    if tool == "ready_to_write":
+        return json.dumps({
+            "tool_result": "ready_to_write",
+            "status": "ok",
+            "instruction": "Proceed with final narration and state JSON.",
+        }, ensure_ascii=False)
+
+    if tool == "memory_search":
+        return json.dumps({
+            "tool_result": "memory_search",
+            "results": [],
+            "note": "No memories found (benchmark stub).",
+        }, ensure_ascii=False)
+
+    if tool in ("sms_list", "sms_read"):
+        return json.dumps({
+            "tool_result": tool,
+            "threads": [],
+            "messages": [],
+        }, ensure_ascii=False)
+
+    if tool == "sms_write":
+        return json.dumps({
+            "tool_result": "sms_write",
+            "status": "sent",
+        }, ensure_ascii=False)
+
+    if tool == "sms_schedule":
+        return json.dumps({
+            "tool_result": "sms_schedule",
+            "status": "scheduled",
+        }, ensure_ascii=False)
+
+    if tool in ("memory_terms", "memory_turn", "memory_store"):
+        return json.dumps({
+            "tool_result": tool,
+            "results": [],
+        }, ensure_ascii=False)
+
+    if tool == "source_browse":
+        return json.dumps({
+            "tool_result": "source_browse",
+            "keys": [],
+            "note": "No source material loaded (benchmark stub).",
+        }, ensure_ascii=False)
+
+    if tool == "name_generate":
+        return json.dumps({
+            "tool_result": "name_generate",
+            "names": [{"first": "Alex", "last": "Morgan", "origin": "english"}],
+        }, ensure_ascii=False)
+
+    if tool == "story_outline":
+        return json.dumps({
+            "tool_result": "story_outline",
+            "outline": {},
+        }, ensure_ascii=False)
+
+    if tool in ("plot_plan", "chapter_plan", "consequence_log"):
+        return json.dumps({
+            "tool_result": tool,
+            "status": "recorded",
+        }, ensure_ascii=False)
+
+    # Unknown tool — generic ack
+    return json.dumps({
+        "tool_result": tool,
+        "status": "ok",
+    }, ensure_ascii=False)
 
 
 def run_auto_checks(
@@ -59,6 +167,16 @@ def run_auto_checks(
     return results
 
 
+def _merge_timing(base: TimingData, addition: TimingData) -> TimingData:
+    """Merge timing data from multiple rounds (accumulate tokens and time)."""
+    return TimingData(
+        prompt_tokens=(base.prompt_tokens or 0) + (addition.prompt_tokens or 0),
+        completion_tokens=(base.completion_tokens or 0) + (addition.completion_tokens or 0),
+        eval_tokens_per_sec=addition.eval_tokens_per_sec or base.eval_tokens_per_sec,
+        wall_clock_seconds=(base.wall_clock_seconds or 0) + (addition.wall_clock_seconds or 0),
+    )
+
+
 def run_scenario(
     scenario: Scenario,
     client: CompletionClient,
@@ -86,7 +204,7 @@ def run_scenario(
         # Build prompt
         system_prompt, user_prompt = builder.build(scenario, turn, state)
 
-        # Get model response
+        # Get model response — with tool-call loop
         try:
             raw_text, timing = client.complete(system_prompt, user_prompt)
         except Exception as e:
@@ -107,12 +225,49 @@ def run_scenario(
             narrations.append("")
             continue
 
-        # Parse response
         parsed = parse_response(raw_text)
+        tool_round = 0
+        accumulated_timing = timing
+
+        # Tool-call loop: if the model returns a tool_call, feed back
+        # a synthetic result and re-call until we get a final response
+        while parsed.is_tool_call and tool_round < MAX_TOOL_ROUNDS:
+            tool_name = parsed.parsed_json.get("tool_call", "unknown")
+
+            if verbose:
+                print(f"    Tool round {tool_round+1}: {tool_name}", file=sys.stderr)
+
+            # Track tool calls in state (for subplot/SMS analysis)
+            state.apply(parsed.parsed_json)
+
+            # Generate synthetic tool result
+            tool_result = _synthetic_tool_result(parsed.parsed_json, state)
+
+            # Append tool result to user prompt and re-call
+            user_prompt = (
+                f"{user_prompt}\n"
+                f"ASSISTANT_RESPONSE:\n{raw_text}\n"
+                f"TOOL_RESULT:\n{tool_result}\n"
+            )
+
+            try:
+                raw_text, timing = client.complete(system_prompt, user_prompt)
+            except Exception as e:
+                # Model failure mid-tool-loop
+                parsed = ParsedResponse(
+                    raw=str(e),
+                    parse_error=f"Model error during tool round {tool_round+1}: {e}",
+                )
+                break
+
+            accumulated_timing = _merge_timing(accumulated_timing, timing)
+            parsed = parse_response(raw_text)
+            tool_round += 1
 
         if verbose:
             status = "tool_call" if parsed.is_tool_call else "response"
-            print(f"    Parsed: {status}, keys={list(parsed.parsed_json.keys())[:5]}", file=sys.stderr)
+            extra = f" (after {tool_round} tool rounds)" if tool_round > 0 else ""
+            print(f"    Parsed: {status}{extra}, keys={list(parsed.parsed_json.keys())[:5]}", file=sys.stderr)
 
         # Collect narration for rubric grading
         narration = parsed.parsed_json.get("narration", "")
@@ -144,7 +299,7 @@ def run_scenario(
             action=turn.action,
             checks=all_results,
             rubric_scores=rubric_scores,
-            timing=timing,
+            timing=accumulated_timing,
             raw_response=raw_text,
         )
         scenario_result.actions.append(action_result)
@@ -157,7 +312,7 @@ def run_scenario(
                 for rs in rubric_scores:
                     print(f"    Rubric {rs.rubric_id}: {rs.score}/{rs.max_score}", file=sys.stderr)
 
-        # Update accumulated state for next turn
+        # Update accumulated state for next turn (final response only)
         state.apply(parsed.parsed_json if not parsed.is_tool_call else None)
 
     # Grade scenario-scope rubrics (across all turns)

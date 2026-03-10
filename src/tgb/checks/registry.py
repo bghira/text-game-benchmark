@@ -24,7 +24,13 @@ from tgb.checks.state_mgmt import (
 )
 from tgb.checks.location import check_location_coherent
 from tgb.checks.tool_checks import check_tool_called, check_tool_format_valid
-from tgb.checks.npc import check_npc_slug_valid, check_npc_immutable_preserved
+from tgb.checks.npc import (
+    check_npc_slug_valid,
+    check_npc_immutable_preserved,
+    check_npc_creation_has_required,
+    check_npc_update_fields_valid,
+    check_npc_no_creation_on_rails,
+)
 from tgb.checks.agency import check_consent_respected, check_player_agency_respected
 from tgb.checks.content import (
     check_scene_image_prompt_present,
@@ -53,6 +59,14 @@ from tgb.checks.subplot import (
     chapter_scene_progression,
     consequence_fields_valid,
     consequence_severity_proportional,
+)
+from tgb.checks.calendar import (
+    check_calendar_update_valid,
+    check_calendar_no_legacy_fields,
+)
+from tgb.checks.give_item import (
+    check_give_item_valid,
+    check_give_item_no_double_remove,
 )
 from tgb.checks.privacy import (
     check_visibility_fields_valid,
@@ -89,6 +103,9 @@ CHECKS: dict[str, CheckFn] = {
     "tool_format_valid": check_tool_format_valid,
     "npc_slug_valid": check_npc_slug_valid,
     "npc_immutable_preserved": check_npc_immutable_preserved,
+    "npc_creation_has_required": check_npc_creation_has_required,
+    "npc_update_fields_valid": check_npc_update_fields_valid,
+    "npc_no_creation_on_rails": check_npc_no_creation_on_rails,
     "consent_respected": check_consent_respected,
     "player_agency_respected": check_player_agency_respected,
     "scene_image_prompt_present": check_scene_image_prompt_present,
@@ -114,6 +131,12 @@ CHECKS: dict[str, CheckFn] = {
     "chapter_scene_progression": chapter_scene_progression,
     "consequence_fields_valid": consequence_fields_valid,
     "consequence_severity_proportional": consequence_severity_proportional,
+    # Calendar checks
+    "calendar_update_valid": check_calendar_update_valid,
+    "calendar_no_legacy_fields": check_calendar_no_legacy_fields,
+    # Give-item checks
+    "give_item_valid": check_give_item_valid,
+    "give_item_no_double_remove": check_give_item_no_double_remove,
     # Privacy checks
     "visibility_fields_valid": check_visibility_fields_valid,
     "visibility_scope_present": check_visibility_scope_present,

@@ -91,6 +91,15 @@ class Scenario:
     rubrics: list[str] = field(default_factory=list)  # rubric IDs to apply (empty = all)
 
 
+def _get_difficulty_levels() -> tuple[str, ...]:
+    """Import valid difficulty levels from the engine."""
+    try:
+        from text_game_engine.zork_emulator import ZorkEmulator
+        return ZorkEmulator.DIFFICULTY_LEVELS
+    except (ImportError, AttributeError):
+        return ("story", "easy", "medium", "normal", "hard", "impossible")
+
+
 def _get_preset_data(preset_name: str) -> dict[str, Any]:
     """Resolve a preset name by importing from text-game-engine."""
     from text_game_engine.zork_emulator import ZorkEmulator
@@ -179,6 +188,11 @@ def _build_campaign(raw: dict[str, Any]) -> CampaignSetup:
     if not isinstance(characters, dict):
         characters = {}
 
+    difficulty = str(campaign_data.get("difficulty", "normal")).strip().lower()
+    valid_levels = _get_difficulty_levels()
+    if difficulty not in valid_levels:
+        difficulty = "normal"
+
     return CampaignSetup(
         name=campaign_data.get("name", ""),
         preset=preset_name,
@@ -190,7 +204,7 @@ def _build_campaign(raw: dict[str, Any]) -> CampaignSetup:
         on_rails=bool(campaign_data.get("on_rails", False)),
         timed_events=bool(campaign_data.get("timed_events", False)),
         memory=bool(campaign_data.get("memory", False)),
-        difficulty=campaign_data.get("difficulty", "normal"),
+        difficulty=difficulty,
         speed=float(campaign_data.get("speed", 1.0)),
         multi_player=bool(campaign_data.get("multi_player", False)),
     )
