@@ -23,6 +23,7 @@ EXPECTED_TYPES: dict[str, type | tuple[type, ...]] = {
     "summary_update": str,
     "xp_awarded": (int, float),
     "player_state_update": dict,
+    "scene_output": dict,
     "scene_image_prompt": str,
     "character_updates": dict,
     "give_item": dict,

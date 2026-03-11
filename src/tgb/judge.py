@@ -154,6 +154,44 @@ CRITERION_PROMPTS: dict[str, str] = {
         "In on_rails campaigns, new NPCs should not be created at all. "
         "Pass if no new NPCs, or if new NPCs are narratively justified and well-defined."
     ),
+    # Writing craft criteria
+    "writing_craft_concrete": (
+        "Does the narration ground every sentence in the concrete? "
+        "Check for sensory detail, specific objects, and named places. "
+        "Narration should show, not tell: 'The lock clicks open' not 'You manage to open it.' "
+        "Abstract summarization ('various topics were discussed', 'time passed') violates this rule. "
+        "Pass if narration uses concrete, specific, sensory-grounded prose."
+    ),
+    "writing_craft_economical": (
+        "Does every paragraph earn its place? "
+        "Check that nothing is wasted: each beat moves the scene, reveals character, or builds atmosphere. "
+        "Fail if the narration contains padding, redundant description, or filler sentences "
+        "that don't advance anything. Prefer the precise word over the approximate one — "
+        "one vivid verb beats three limp adjectives."
+    ),
+    "writing_craft_rhythm": (
+        "Does the narration vary sentence length and rhythm? "
+        "Check for a mix of short and long sentences. A page of uniformly long compound "
+        "sentences is monotonous; so is a staccato burst of identically short ones. "
+        "The best prose varies structure: a short sentence after a long one lands harder. "
+        "Pass if the narration shows rhythmic variation and structural intentionality."
+    ),
+    "writing_craft_anti_echo": (
+        "Does the narration avoid restating or mirroring the player's just-written wording? "
+        "ANTI-ECHO rule: the NPC/narrator's first line should add new information, "
+        "a decision, a demand, or a consequence — not paraphrase the player's input. "
+        "It must not quote the player's lines back unless one exact contested phrase "
+        "is materially necessary. Pass if the narration introduces new content "
+        "rather than echoing the player's words."
+    ),
+    "sincerity_respected": (
+        "If the player gave a sincere, vulnerable, or honest answer to an NPC's question, "
+        "does the NPC engage with the substance of what was said? "
+        "The NPC may agree, disagree, be moved, or push back — but must NOT dismiss "
+        "it as a non-answer and re-ask the same question. Humor, wordplay, or indirect "
+        "phrasing still counts as sincere when it conveys real content. "
+        "Pass if no sincerity context applies, or if the NPC engages genuinely."
+    ),
 }
 
 

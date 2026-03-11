@@ -1,4 +1,4 @@
-"""Tests for new check modules: calendar, give_item, expanded npc checks."""
+"""Tests for new check modules: calendar, give_item, expanded npc checks, writing craft checks."""
 
 import json
 import pytest
@@ -20,6 +20,11 @@ from tgb.checks.npc import (
     MUTABLE_FIELDS,
     IMMUTABLE_FIELDS,
     ALL_VALID_FIELDS,
+)
+from tgb.checks.narrative import (
+    check_narration_no_echo,
+    check_narration_no_therapist_speak,
+    check_narration_not_abstract,
 )
 from tgb.checks.json_structure import EXPECTED_TYPES
 from tgb.response_parser import ParsedResponse
@@ -395,16 +400,22 @@ class TestNpcCreationHasRequired:
         result = check_npc_creation_has_required(parsed, _make_scenario(), TURN, _make_state(), P)
         assert result.passed
 
-    def test_new_npc_with_name(self):
+    def test_new_npc_with_all_fields(self):
         parsed = _make_parsed({"character_updates": {
-            "bob-the-guard": {"name": "Bob the Guard", "personality": "stern"},
+            "bob-the-guard": {
+                "name": "Bob the Guard", "personality": "stern",
+                "background": "ex-soldier", "appearance": "tall, scarred",
+                "speech_style": "Speaks in short, clipped sentences.",
+                "location": "main-gate", "current_status": "on-duty",
+                "allegiance": "kingdom", "relationship": "neutral",
+            },
         }})
         result = check_npc_creation_has_required(parsed, _make_scenario(), TURN, _make_state(), P)
         assert result.passed
 
-    def test_new_npc_missing_name(self):
+    def test_new_npc_missing_required(self):
         parsed = _make_parsed({"character_updates": {
-            "bob-the-guard": {"personality": "stern"},
+            "bob-the-guard": {"name": "Bob", "personality": "stern"},
         }})
         result = check_npc_creation_has_required(parsed, _make_scenario(), TURN, _make_state(), P)
         assert not result.passed
@@ -544,3 +555,105 @@ class TestNpcFieldConstants:
         assert "background" in IMMUTABLE_FIELDS
         assert "appearance" in IMMUTABLE_FIELDS
         assert "speech_style" in IMMUTABLE_FIELDS
+
+
+# ── EXPECTED_TYPES completeness additions ──────────────────────
+
+class TestExpectedTypesSceneOutput:
+    def test_has_scene_output(self):
+        assert "scene_output" in EXPECTED_TYPES
+        assert EXPECTED_TYPES["scene_output"] is dict
+
+
+# ── Writing craft: anti-echo checks ───────────────────────────
+
+class TestNarrationNoEcho:
+    def test_no_narration(self):
+        parsed = _make_parsed({"narration": ""})
+        result = check_narration_no_echo(parsed, _make_scenario(), TurnSpec(action="look"), _make_state(), P)
+        assert result.passed
+
+    def test_no_action(self):
+        parsed = _make_parsed({"narration": "You see a door."})
+        result = check_narration_no_echo(parsed, _make_scenario(), TurnSpec(action=""), _make_state(), P)
+        assert result.passed
+
+    def test_clean_narration(self):
+        parsed = _make_parsed({"narration": "The ancient door creaks open, revealing a dusty corridor beyond."})
+        result = check_narration_no_echo(parsed, _make_scenario(), TurnSpec(action="open the door"), _make_state(), P)
+        assert result.passed
+
+    def test_echoed_narration(self):
+        action = "I carefully open the heavy wooden door and step through into the hallway"
+        narration = "You carefully open the heavy wooden door and step through into the hallway. It is dark."
+        parsed = _make_parsed({"narration": narration})
+        result = check_narration_no_echo(parsed, _make_scenario(), TurnSpec(action=action), _make_state(), P)
+        assert not result.passed
+        assert "echo" in result.detail.lower()
+
+    def test_short_action_skipped(self):
+        parsed = _make_parsed({"narration": "You look around the room."})
+        result = check_narration_no_echo(parsed, _make_scenario(), TurnSpec(action="look"), _make_state(), P)
+        assert result.passed
+
+
+# ── Writing craft: therapist-speak checks ─────────────────────
+
+class TestNarrationNoTherapistSpeak:
+    def test_clean_narration(self):
+        parsed = _make_parsed({"narration": "The guard nods and steps aside. The corridor stretches east."})
+        result = check_narration_no_therapist_speak(parsed, _make_scenario(), TURN, _make_state(), P)
+        assert result.passed
+
+    def test_single_phrase_passes(self):
+        """One phrase alone shouldn't trigger — threshold is 2."""
+        parsed = _make_parsed({"narration": "She holds space for your silence. The fire crackles."})
+        result = check_narration_no_therapist_speak(parsed, _make_scenario(), TURN, _make_state(), P)
+        assert result.passed
+
+    def test_multiple_phrases_fail(self):
+        narration = (
+            "She reminds you to be present with your feelings. "
+            "The healer says you need to hold space for this grief. "
+            "The sage suggests sitting with that discomfort."
+        )
+        parsed = _make_parsed({"narration": narration})
+        result = check_narration_no_therapist_speak(parsed, _make_scenario(), TURN, _make_state(), P)
+        assert not result.passed
+        assert "therapist" in result.detail.lower()
+
+    def test_no_narration(self):
+        parsed = _make_parsed({"narration": ""})
+        result = check_narration_no_therapist_speak(parsed, _make_scenario(), TURN, _make_state(), P)
+        assert result.passed
+
+
+# ── Writing craft: abstract summary checks ───────────────────
+
+class TestNarrationNotAbstract:
+    def test_concrete_narration(self):
+        parsed = _make_parsed({"narration": "The lock clicks. You push the door open. Cold air bites your face."})
+        result = check_narration_not_abstract(parsed, _make_scenario(), TURN, _make_state(), P)
+        assert result.passed
+
+    def test_abstract_narration(self):
+        narration = (
+            "After some discussion, various topics were discussed. "
+            "The conversation continued as time passed and they went on talking."
+        )
+        parsed = _make_parsed({"narration": narration})
+        result = check_narration_not_abstract(parsed, _make_scenario(), TURN, _make_state(), P)
+        assert not result.passed
+        assert "abstract" in result.detail.lower()
+
+    def test_single_abstract_phrase_passes(self):
+        """One abstract phrase alone shouldn't trigger — threshold is 2."""
+        narration = "After some discussion, the elder reveals a hidden passage behind the bookshelf."
+        parsed = _make_parsed({"narration": narration})
+        result = check_narration_not_abstract(parsed, _make_scenario(), TURN, _make_state(), P)
+        assert result.passed
+
+    def test_no_narration(self):
+        parsed = _make_parsed({"narration": ""})
+        result = check_narration_not_abstract(parsed, _make_scenario(), TURN, _make_state(), P)
+        assert result.passed

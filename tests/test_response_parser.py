@@ -89,23 +89,30 @@ class TestCleanResponse:
 
 class TestCleanResponseTruncation:
     def test_repairs_single_missing_brace(self):
-        text = '{"key": "val"'
+        # Repair only works when result contains narration or tool_call
+        text = '{"narration": "hello"'
         result = clean_response(text)
         assert result.endswith("}")
         data = json.loads(result)
-        assert data["key"] == "val"
+        assert data["narration"] == "hello"
 
     def test_repairs_nested_missing_braces(self):
-        text = '{"outer": {"inner": "val"'
+        text = '{"narration": "x", "state_update": {"inner": "val"'
         result = clean_response(text)
         data = json.loads(result)
-        assert data["outer"]["inner"] == "val"
+        assert data["state_update"]["inner"] == "val"
 
     def test_repairs_deeply_nested(self):
-        text = '{"a": {"b": {"c": "d"'
+        text = '{"narration": "x", "a": {"b": {"c": "d"'
         result = clean_response(text)
         data = json.loads(result)
         assert data["a"]["b"]["c"] == "d"
+
+    def test_no_repair_without_narration_or_tool_call(self):
+        # Without narration/tool_call, truncation repair should NOT apply
+        text = '{"key": "val"'
+        result = clean_response(text)
+        assert result == text  # returned as-is
 
     def test_no_repair_if_already_valid(self):
         text = '{"key": "val"}'

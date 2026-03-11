@@ -1,4 +1,4 @@
-"""NPC checks: npc_slug_valid, npc_immutable_preserved, npc_creation_fields, npc_update_fields_valid."""
+"""NPC checks: npc_slug_valid, npc_immutable_preserved, npc_creation_fields, npc_update_fields_valid, npc_relationships_valid."""
 
 from __future__ import annotations
 
@@ -21,7 +21,13 @@ MUTABLE_FIELDS = {
 }
 
 # Required fields when creating a new NPC
-CREATION_REQUIRED_FIELDS = {"name"}
+# Engine: "On first appearance provide all fields: name, personality,
+# background, appearance, speech_style, location, current_status,
+# allegiance, relationship."
+CREATION_REQUIRED_FIELDS = {
+    "name", "personality", "background", "appearance", "speech_style",
+    "location", "current_status", "allegiance", "relationship",
+}
 
 # All valid fields for character_updates entries
 ALL_VALID_FIELDS = IMMUTABLE_FIELDS | MUTABLE_FIELDS
@@ -263,5 +269,55 @@ def check_npc_no_creation_on_rails(
         check_id="npc_no_creation_on_rails",
         passed=True,
         detail="No new NPCs created in on_rails mode",
+        category="npc",
+    )
+
+
+def check_npc_relationships_valid(
+    parsed: ParsedResponse,
+    scenario: Scenario,
+    turn: TurnSpec,
+    state: AccumulatedState,
+    params: dict[str, Any],
+) -> CheckResult:
+    """Check that the 'relationships' field in character_updates is a dict of dicts.
+
+    Engine uses relationships as a map of NPC-to-NPC/player relationship data,
+    with keys like 'status', 'knows_about', 'doesnt_know', 'dynamic'.
+    """
+    char_updates = parsed.parsed_json.get("character_updates")
+    if not isinstance(char_updates, dict) or not char_updates:
+        return CheckResult(
+            check_id="npc_relationships_valid",
+            passed=True,
+            detail="No character_updates",
+            category="npc",
+        )
+
+    issues: list[str] = []
+    for slug, data in char_updates.items():
+        if not isinstance(data, dict):
+            continue
+        rels = data.get("relationships")
+        if rels is None:
+            continue
+        if not isinstance(rels, dict):
+            issues.append(f"{slug}.relationships is {type(rels).__name__}, expected dict")
+            continue
+        for rel_key, rel_val in rels.items():
+            if not isinstance(rel_val, dict):
+                issues.append(f"{slug}.relationships.{rel_key} is {type(rel_val).__name__}, expected dict")
+
+    if issues:
+        return CheckResult(
+            check_id="npc_relationships_valid",
+            passed=False,
+            detail=f"Relationship format issues: {'; '.join(issues[:5])}",
+            category="npc",
+        )
+    return CheckResult(
+        check_id="npc_relationships_valid",
+        passed=True,
+        detail="All relationships fields valid",
         category="npc",
     )

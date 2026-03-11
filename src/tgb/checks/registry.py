@@ -17,19 +17,42 @@ from tgb.checks.narrative import (
     check_narration_no_recap,
     check_no_inventory_in_narration,
     check_no_markdown_in_response,
+    check_narration_no_echo,
+    check_narration_no_therapist_speak,
+    check_narration_not_abstract,
 )
 from tgb.checks.state_mgmt import (
     check_state_nested,
     check_state_null_prune,
+    check_state_completed_value_prune,
+    check_game_time_advanced,
+    check_game_time_period_valid,
+    check_state_update_required_fields,
+    check_state_no_character_removal,
+    check_inventory_changes_limit,
+    check_summary_update_valid,
+    check_party_status_valid,
+)
+from tgb.checks.scene_output import check_scene_output_valid
+from tgb.checks.mechanics import (
+    check_dice_check_valid,
+    check_puzzle_trigger_valid,
+    check_minigame_challenge_valid,
 )
 from tgb.checks.location import check_location_coherent
-from tgb.checks.tool_checks import check_tool_called, check_tool_format_valid
+from tgb.checks.tool_checks import (
+    check_tool_called,
+    check_tool_format_valid,
+    check_communication_rules_valid,
+    check_name_generate_valid,
+)
 from tgb.checks.npc import (
     check_npc_slug_valid,
     check_npc_immutable_preserved,
     check_npc_creation_has_required,
     check_npc_update_fields_valid,
     check_npc_no_creation_on_rails,
+    check_npc_relationships_valid,
 )
 from tgb.checks.agency import check_consent_respected, check_player_agency_respected
 from tgb.checks.content import (
@@ -63,6 +86,7 @@ from tgb.checks.subplot import (
 from tgb.checks.calendar import (
     check_calendar_update_valid,
     check_calendar_no_legacy_fields,
+    check_calendar_fire_range,
 )
 from tgb.checks.give_item import (
     check_give_item_valid,
@@ -96,16 +120,37 @@ CHECKS: dict[str, CheckFn] = {
     "narration_no_recap": check_narration_no_recap,
     "no_inventory_in_narration": check_no_inventory_in_narration,
     "no_markdown_in_response": check_no_markdown_in_response,
+    # Writing craft checks
+    "narration_no_echo": check_narration_no_echo,
+    "narration_no_therapist_speak": check_narration_no_therapist_speak,
+    "narration_not_abstract": check_narration_not_abstract,
     "state_nested": check_state_nested,
     "state_null_prune": check_state_null_prune,
+    "state_completed_value_prune": check_state_completed_value_prune,
+    "game_time_advanced": check_game_time_advanced,
+    "game_time_period_valid": check_game_time_period_valid,
+    "state_update_required_fields": check_state_update_required_fields,
+    "state_no_character_removal": check_state_no_character_removal,
+    "inventory_changes_limit": check_inventory_changes_limit,
+    "summary_update_valid": check_summary_update_valid,
+    "party_status_valid": check_party_status_valid,
+    # Scene output checks
+    "scene_output_valid": check_scene_output_valid,
+    # Mechanics checks
+    "dice_check_valid": check_dice_check_valid,
+    "puzzle_trigger_valid": check_puzzle_trigger_valid,
+    "minigame_challenge_valid": check_minigame_challenge_valid,
     "location_coherent": check_location_coherent,
     "tool_called": check_tool_called,
     "tool_format_valid": check_tool_format_valid,
+    "communication_rules_valid": check_communication_rules_valid,
+    "name_generate_valid": check_name_generate_valid,
     "npc_slug_valid": check_npc_slug_valid,
     "npc_immutable_preserved": check_npc_immutable_preserved,
     "npc_creation_has_required": check_npc_creation_has_required,
     "npc_update_fields_valid": check_npc_update_fields_valid,
     "npc_no_creation_on_rails": check_npc_no_creation_on_rails,
+    "npc_relationships_valid": check_npc_relationships_valid,
     "consent_respected": check_consent_respected,
     "player_agency_respected": check_player_agency_respected,
     "scene_image_prompt_present": check_scene_image_prompt_present,
@@ -134,6 +179,7 @@ CHECKS: dict[str, CheckFn] = {
     # Calendar checks
     "calendar_update_valid": check_calendar_update_valid,
     "calendar_no_legacy_fields": check_calendar_no_legacy_fields,
+    "calendar_fire_range": check_calendar_fire_range,
     # Give-item checks
     "give_item_valid": check_give_item_valid,
     "give_item_no_double_remove": check_give_item_no_double_remove,

@@ -1,4 +1,4 @@
-"""Narrative checks: reasoning_concise, narration_length, narration_no_recap, no_inventory, no_markdown."""
+"""Narrative checks: reasoning_concise, narration_length, narration_no_recap, no_inventory, no_markdown, anti-echo, therapist-speak, abstract-summary."""
 
 from __future__ import annotations
 
@@ -227,5 +227,206 @@ def check_no_markdown_in_response(
         check_id="no_markdown_in_response",
         passed=True,
         detail="No markdown code fences",
+        category="narrative",
+    )
+
+
+# ── Writing craft checks (mirrors engine WRITING_CRAFT + ANTI-ECHO rules) ──
+
+# ANTI-ECHO: narration should not restate/mirror the player's action wording
+_ECHO_NGRAM_SIZE = 4
+_ECHO_THRESHOLD_DEFAULT = 0.35
+
+
+def check_narration_no_echo(
+    parsed: ParsedResponse,
+    scenario: Scenario,
+    turn: TurnSpec,
+    state: AccumulatedState,
+    params: dict[str, Any],
+) -> CheckResult:
+    """Check that narration doesn't echo the player's action wording.
+
+    Mirrors the engine's ANTI-ECHO directive: 'do NOT restate, paraphrase,
+    or mirror the player's just-written wording.'
+    Uses n-gram overlap between the player's action text and the first
+    sentence(s) of narration.
+    """
+    narration = parsed.parsed_json.get("narration", "")
+    if not isinstance(narration, str) or not narration.strip():
+        return CheckResult(
+            check_id="narration_no_echo",
+            passed=True,
+            detail="No narration to check",
+            category="narrative",
+        )
+
+    action = turn.action
+    if not action or not action.strip():
+        return CheckResult(
+            check_id="narration_no_echo",
+            passed=True,
+            detail="No action to compare",
+            category="narrative",
+        )
+
+    # Compare action against first ~200 chars of narration (the opening)
+    opening = narration[:200]
+
+    n = params.get("ngram_size", _ECHO_NGRAM_SIZE)
+    threshold = params.get("threshold", _ECHO_THRESHOLD_DEFAULT)
+
+    action_ngrams = set(_ngrams(action, n))
+    if not action_ngrams:
+        return CheckResult(
+            check_id="narration_no_echo",
+            passed=True,
+            detail="Action too short for n-gram analysis",
+            category="narrative",
+        )
+
+    opening_ngrams = _ngrams(opening, n)
+    if not opening_ngrams:
+        return CheckResult(
+            check_id="narration_no_echo",
+            passed=True,
+            detail="Narration opening too short for n-gram analysis",
+            category="narrative",
+        )
+
+    echoed = sum(1 for ng in opening_ngrams if ng in action_ngrams)
+    ratio = echoed / len(opening_ngrams)
+
+    if ratio > threshold:
+        return CheckResult(
+            check_id="narration_no_echo",
+            passed=False,
+            detail=f"{ratio:.0%} echo overlap with player action (threshold {threshold:.0%})",
+            category="narrative",
+        )
+    return CheckResult(
+        check_id="narration_no_echo",
+        passed=True,
+        detail=f"{ratio:.0%} echo overlap",
+        category="narrative",
+    )
+
+
+# Therapist-speak / contrived emotional shorthand detection
+_THERAPIST_SPEAK_PHRASES = [
+    r"\bhold(?:ing)?\s+space\b",
+    r"\bbe\s+present\b",
+    r"\bshow(?:ing)?\s+up\b(?:\s+for\b)",
+    r"\bdo(?:ing)?\s+the\s+work\b",
+    r"\blean(?:ing)?\s+into?\b",
+    r"\bsit(?:ting)?\s+with\b(?:\s+(?:that|this|the|it)\b)",
+    r"\bunpack(?:ing)?\b(?:\s+(?:that|this|the|it)\b)",
+    r"\bprocess(?:ing)?\b(?:\s+(?:that|this|the|it)\b)",
+    r"\bfeel(?:ing)?\s+seen\b",
+    r"\bvalid(?:at(?:e|ing))?\s+(?:your|his|her|their)\b",
+    r"\bsafe\s+space\b",
+    r"\bset(?:ting)?\s+(?:a\s+)?boundar(?:y|ies)\b",
+    r"\bheal(?:ing)?\s+journey\b",
+    r"\bemotional\s+labor\b",
+]
+
+_THERAPIST_THRESHOLD_DEFAULT = 2  # number of distinct phrases before flagging
+
+
+def check_narration_no_therapist_speak(
+    parsed: ParsedResponse,
+    scenario: Scenario,
+    turn: TurnSpec,
+    state: AccumulatedState,
+    params: dict[str, Any],
+) -> CheckResult:
+    """Check that narration avoids contrived therapeutic language.
+
+    Mirrors the engine's anti-pattern: 'Avoid contrived emotional-summary
+    language or therapist-speak unless that exact voice is canonically right
+    for the speaking character.'
+    """
+    narration = parsed.parsed_json.get("narration", "")
+    if not isinstance(narration, str) or not narration.strip():
+        return CheckResult(
+            check_id="narration_no_therapist_speak",
+            passed=True,
+            detail="No narration to check",
+            category="narrative",
+        )
+
+    threshold = params.get("threshold", _THERAPIST_THRESHOLD_DEFAULT)
+    hits: list[str] = []
+    for pattern in _THERAPIST_SPEAK_PHRASES:
+        match = re.search(pattern, narration, re.IGNORECASE)
+        if match:
+            hits.append(match.group())
+
+    if len(hits) >= threshold:
+        return CheckResult(
+            check_id="narration_no_therapist_speak",
+            passed=False,
+            detail=f"Therapist-speak detected ({len(hits)} phrases): {hits}",
+            category="narrative",
+        )
+    return CheckResult(
+        check_id="narration_no_therapist_speak",
+        passed=True,
+        detail=f"No therapist-speak pattern ({len(hits)} matches)" if hits else "Clean",
+        category="narrative",
+    )
+
+
+# Abstract-summary detection — WRITING_CRAFT: "Abstract summary is not narration"
+_ABSTRACT_SUMMARY_PATTERNS = [
+    r"(?i)\bthey?\s+(discussed|talked\s+about|went\s+over|covered)\s+(?:various|several|many|a\s+(?:number|range|variety)\s+of)\b",
+    r"(?i)\btime\s+passed\b.*\bthey\b.*\b(continued|went\s+on|kept)\b",
+    r"(?i)\bthe\s+conversation\s+(continued|went\s+on|flowed|turned)\b",
+    r"(?i)\bafter\s+(?:some|much|a\s+(?:long|brief))\s+(?:discussion|deliberation|conversation|debate)\b",
+    r"(?i)\b(?:various|several|many)\s+(?:topics|subjects|matters|issues)\s+(?:were|came\s+up)\b",
+]
+
+_ABSTRACT_THRESHOLD_DEFAULT = 2
+
+
+def check_narration_not_abstract(
+    parsed: ParsedResponse,
+    scenario: Scenario,
+    turn: TurnSpec,
+    state: AccumulatedState,
+    params: dict[str, Any],
+) -> CheckResult:
+    """Check that narration uses concrete detail, not abstract summarization.
+
+    Mirrors WRITING_CRAFT: 'Ground every sentence in the concrete: sensory
+    detail, specific objects, named places. Abstract summary is not narration.'
+    """
+    narration = parsed.parsed_json.get("narration", "")
+    if not isinstance(narration, str) or not narration.strip():
+        return CheckResult(
+            check_id="narration_not_abstract",
+            passed=True,
+            detail="No narration to check",
+            category="narrative",
+        )
+
+    threshold = params.get("threshold", _ABSTRACT_THRESHOLD_DEFAULT)
+    hits: list[str] = []
+    for pattern in _ABSTRACT_SUMMARY_PATTERNS:
+        match = re.search(pattern, narration)
+        if match:
+            hits.append(match.group())
+
+    if len(hits) >= threshold:
+        return CheckResult(
+            check_id="narration_not_abstract",
+            passed=False,
+            detail=f"Abstract summary patterns detected ({len(hits)}): {hits}",
+            category="narrative",
+        )
+    return CheckResult(
+        check_id="narration_not_abstract",
+        passed=True,
+        detail=f"Narration is concrete ({len(hits)} abstract patterns)" if hits else "Concrete narration",
         category="narrative",
     )
