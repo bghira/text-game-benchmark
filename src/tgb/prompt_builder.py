@@ -557,8 +557,6 @@ class PromptBuilder:
             f"CURRENT_GAME_TIME: {_dump_json(game_time)}\n"
             f"SPEED_MULTIPLIER: {speed_mult}\n"
             f"DIFFICULTY: {difficulty}\n"
-            f"ATTENTION_WINDOW_SECONDS: 600\n"
-            f"CURRENTLY_ATTENTIVE_PLAYERS: {_dump_json(scenario.attentive_players)}\n"
             f"ACTIVE_PLAYER_LOCATION: {_dump_json(active_location)}\n"
             f"MEMORY_LOOKUP_ENABLED: {str(memory_enabled).lower()}\n"
             f"RECENT_TURNS_LOADED: true\n"

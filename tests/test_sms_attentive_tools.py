@@ -1,5 +1,5 @@
-"""Tests for SMS state tracking, CURRENTLY_ATTENTIVE_PLAYERS, name_generate,
-communication_rules, and chapter close action."""
+"""Tests for SMS state tracking, name_generate, communication_rules,
+and chapter close action."""
 
 import json
 
@@ -11,7 +11,7 @@ from tgb.checks.tool_checks import (
 from tgb.checks.subplot import chapter_fields_valid
 from tgb.response_parser import ParsedResponse
 from tgb.config import Scenario, CampaignSetup, PlayerSetup, TurnSpec
-from tgb.prompt_builder import AccumulatedState, PromptBuilder
+from tgb.prompt_builder import AccumulatedState
 
 
 def _make_scenario(**kwargs) -> Scenario:
@@ -23,7 +23,6 @@ def _make_scenario(**kwargs) -> Scenario:
         campaign=kwargs.get("campaign", CampaignSetup(name="test")),
         player=kwargs.get("player", PlayerSetup()),
         turns=[TurnSpec(action="test")],
-        attentive_players=kwargs.get("attentive_players", []),
     )
 
 
@@ -185,36 +184,6 @@ class TestSmsStateTracking:
         threads = state.campaign_state["_sms_threads"]
         msg = threads["test"]["messages"][0]
         assert len(msg["from"]) == 80
-
-
-# ── CURRENTLY_ATTENTIVE_PLAYERS ─────────────────────────────────
-
-
-class TestAttentivePlayers:
-    def test_empty_by_default(self):
-        scenario = _make_scenario()
-        state = _make_state(scenario)
-        builder = PromptBuilder()
-        _, user_prompt = builder.build(scenario, TURN, state)
-        assert "CURRENTLY_ATTENTIVE_PLAYERS:[]" in user_prompt.replace(" ", "")
-
-    def test_populated_from_scenario(self):
-        attentive = [
-            {"actor_id": 1, "name": "Alice", "player_slug": "alice", "seconds_since_last_message": 30},
-        ]
-        scenario = _make_scenario(attentive_players=attentive)
-        state = _make_state(scenario)
-        builder = PromptBuilder()
-        _, user_prompt = builder.build(scenario, TURN, state)
-        assert '"actor_id":1' in user_prompt.replace(" ", "")
-        assert '"player_slug":"alice"' in user_prompt.replace(" ", "")
-
-    def test_attention_window_present(self):
-        scenario = _make_scenario()
-        state = _make_state(scenario)
-        builder = PromptBuilder()
-        _, user_prompt = builder.build(scenario, TURN, state)
-        assert "ATTENTION_WINDOW_SECONDS: 600" in user_prompt
 
 
 # ── communication_rules_valid ───────────────────────────────────
