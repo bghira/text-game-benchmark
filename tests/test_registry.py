@@ -19,6 +19,11 @@ class TestRegistryCompleteness:
         assert "npc_update_fields_valid" in CHECKS
         assert "npc_no_creation_on_rails" in CHECKS
 
+    def test_writing_craft_checks_registered(self):
+        assert "narration_no_echo" in CHECKS
+        assert "narration_no_therapist_speak" in CHECKS
+        assert "narration_not_abstract" in CHECKS
+
     def test_existing_checks_still_registered(self):
         existing = [
             "json_valid", "json_keys_present", "json_types_correct",

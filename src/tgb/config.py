@@ -89,6 +89,7 @@ class Scenario:
     recent_turns: list[dict[str, Any]] = field(default_factory=list)
     party: list[dict[str, Any]] = field(default_factory=list)
     rubrics: list[str] = field(default_factory=list)  # rubric IDs to apply (empty = all)
+    attentive_players: list[dict[str, Any]] = field(default_factory=list)
 
 
 def _get_difficulty_levels() -> tuple[str, ...]:
@@ -255,6 +256,7 @@ def load_scenario(path: str | Path) -> Scenario:
     party = raw.get("party", [])
     rubrics_raw = raw.get("rubrics", [])
     rubric_ids = [str(r) for r in rubrics_raw] if rubrics_raw else []
+    attentive_players = raw.get("attentive_players", [])
 
     return Scenario(
         name=name,
@@ -268,6 +270,7 @@ def load_scenario(path: str | Path) -> Scenario:
         recent_turns=recent_turns,
         party=party,
         rubrics=rubric_ids,
+        attentive_players=attentive_players,
     )
 
 

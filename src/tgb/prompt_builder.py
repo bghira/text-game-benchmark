@@ -130,6 +130,10 @@ class AccumulatedState:
                         if not (isinstance(i, str) and i.lower() == item_lower)
                     ]
 
+        # Track SMS state when sms_write/sms_schedule tool calls are made
+        if tool_call in ("sms_write", "sms_schedule"):
+            self._apply_sms_write(parsed_json)
+
         # Track timer setting
         timer_delay = parsed_json.get("set_timer_delay")
         if timer_delay is not None:
@@ -180,9 +184,10 @@ class AccumulatedState:
                 if slug in self.chapters:
                     if action == "advance_scene":
                         self.chapters[slug]["current_scene"] = data.get("to_scene", "")
-                    elif action == "resolve":
+                    elif action in ("resolve", "close"):
                         self.chapters[slug]["status"] = "resolved"
-                        self.chapters[slug]["resolution"] = data.get("resolution", "")
+                        resolution = str(data.get("resolution") or "").strip()[:260]
+                        self.chapters[slug]["resolution"] = resolution
                     self.chapters[slug]["updated_turn"] = self.turn_number
             elif isinstance(chapter_data, dict):
                 slug = chapter_data.get("slug", "")
@@ -191,6 +196,14 @@ class AccumulatedState:
                         chapter_data.setdefault("created_turn", self.turn_number)
                         chapter_data.setdefault("status", "active")
                         self.chapters[slug] = dict(chapter_data)
+                    elif action in ("resolve", "close"):
+                        if slug in self.chapters:
+                            self.chapters[slug]["status"] = "resolved"
+                            resolution = str(data.get("resolution") or "").strip()[:260]
+                            self.chapters[slug]["resolution"] = resolution
+                        else:
+                            self.chapters[slug] = dict(chapter_data)
+                            self.chapters[slug]["status"] = "resolved"
                     elif slug in self.chapters:
                         self.chapters[slug].update(chapter_data)
                     else:
@@ -231,10 +244,83 @@ class AccumulatedState:
                 for cid in removes:
                     self.consequences.pop(str(cid), None)
 
+    # ── SMS tracking (mirrors engine's _sms_write) ──────────────
+
+    SMS_MAX_THREADS = 24
+    SMS_MAX_MESSAGES_PER_THREAD = 40
+
+    def _apply_sms_write(self, data: dict[str, Any]) -> None:
+        """Track SMS messages in campaign state when sms_write/sms_schedule is called.
+
+        Mirrors engine's _sms_write: stores messages in _sms_threads with
+        per-thread message limits and global thread limits.
+        """
+        thread_key = str(data.get("thread", "")).strip().lower()
+        if not thread_key:
+            return
+        sender = str(data.get("from", data.get("sender", ""))).strip()[:80]
+        recipient = str(data.get("to", data.get("recipient", ""))).strip()[:80]
+        message = str(data.get("message", "")).strip()[:500]
+        if not sender or not recipient or not message:
+            return
+
+        threads: dict[str, Any] = self.campaign_state.setdefault("_sms_threads", {})
+        if not isinstance(threads, dict):
+            threads = {}
+            self.campaign_state["_sms_threads"] = threads
+
+        # Get or create thread
+        thread = threads.setdefault(thread_key, {"label": thread_key, "messages": []})
+        if not isinstance(thread.get("messages"), list):
+            thread["messages"] = []
+
+        # Get game_time for timestamp
+        game_time = self.campaign_state.get("game_time", {})
+        seq = self.campaign_state.get("_sms_message_seq", 0) + 1
+        self.campaign_state["_sms_message_seq"] = seq
+
+        msg_entry = {
+            "from": sender,
+            "to": recipient,
+            "message": message,
+            "day": game_time.get("day", 1) if isinstance(game_time, dict) else 1,
+            "hour": game_time.get("hour", 8) if isinstance(game_time, dict) else 8,
+            "minute": game_time.get("minute", 0) if isinstance(game_time, dict) else 0,
+            "turn_id": self.turn_number,
+            "seq": seq,
+        }
+        thread["messages"].append(msg_entry)
+
+        # Enforce per-thread message limit
+        if len(thread["messages"]) > self.SMS_MAX_MESSAGES_PER_THREAD:
+            thread["messages"] = thread["messages"][-self.SMS_MAX_MESSAGES_PER_THREAD:]
+
+        # Enforce global thread limit (evict oldest)
+        if len(threads) > self.SMS_MAX_THREADS:
+            # Find thread with oldest last message
+            oldest_key = min(
+                threads,
+                key=lambda k: (threads[k].get("messages", [{}])[-1].get("seq", 0)
+                               if threads[k].get("messages") else 0),
+            )
+            del threads[oldest_key]
+
+    # Engine auto-deletes keys set to these string values
+    _COMPLETED_VALUES = {
+        "complete", "completed", "done", "resolved", "finished",
+        "concluded", "vacated", "dispersed", "avoided", "departed",
+    }
+
     def _apply_state_patch(self, target: dict[str, Any], patch: dict[str, Any]) -> None:
-        """Apply a state patch: null values prune keys, dicts merge recursively."""
+        """Apply a state patch: null values prune keys, completed-value strings
+        prune keys, dicts merge recursively.
+
+        Matches engine's _apply_state_update behavior.
+        """
         for key, val in patch.items():
             if val is None:
+                target.pop(key, None)
+            elif isinstance(val, str) and val.strip().lower() in self._COMPLETED_VALUES:
                 target.pop(key, None)
             elif isinstance(val, dict) and isinstance(target.get(key), dict):
                 self._apply_state_patch(target[key], val)
@@ -303,21 +389,23 @@ class PromptBuilder:
         })
 
         # Build model state (campaign state minus internal keys)
-        # Mirrors ZorkEmulator.MODEL_STATE_EXCLUDE_KEYS
+        # Mirrors ZorkEmulator.MODEL_STATE_EXCLUDE_KEYS exactly:
+        #   ROOM_STATE_KEYS | { engine internal keys }
         _exclude_keys = {
-            "game_time", "guardrails_enabled", "on_rails",
+            # ROOM_STATE_KEYS
+            "room_title", "room_description", "room_summary",
+            "exits", "location", "room_id",
+            # Engine internal keys
             "last_narration", "room_scene_images", "scene_image_model",
             "default_persona", "start_room", "story_outline",
             "current_chapter", "current_scene", "setup_phase", "setup_data",
-            "speed_multiplier", "difficulty", "calendar",
+            "speed_multiplier", "difficulty", "game_time", "calendar",
             "_calendar_reminders", "_auto_fix_counters",
             "_memory_search_usage", "_sms_threads", "_sms_read_state",
-            "_sms_message_seq", "_turn_time_index", "_literary_styles",
+            "_sms_message_seq", "_turn_time_index", "literary_styles",
             "_active_puzzle", "_puzzle_result",
-            "_active_minigame", "_minigame_result", "_last_dice_check",
-            "_last_minigame_result",
-            # Room state keys the engine also excludes
-            "room_id", "room_title", "room_summary",
+            "_active_minigame", "_minigame_result",
+            "_last_dice_check", "_last_minigame_result",
         }
         model_state = {k: v for k, v in state.campaign_state.items()
                        if k not in _exclude_keys}
@@ -331,8 +419,13 @@ class PromptBuilder:
         # Speed multiplier
         speed_mult = campaign.speed
 
-        # Player card
-        player_state_prompt = dict(state.player_state)
+        # Player card — exclude keys the engine filters out
+        # (inventory goes in RAILS_CONTEXT, room_description/zork_stats internal)
+        _player_exclude = {"inventory", "room_description", "zork_stats"}
+        player_state_prompt = {
+            k: v for k, v in state.player_state.items()
+            if k not in _player_exclude
+        }
         player_card = {
             "level": player.level,
             "xp": player.xp,
@@ -349,9 +442,9 @@ class PromptBuilder:
             "room_summary": player_state_prompt.get("room_summary", ""),
         }
 
-        # Rails context (inventory-related)
+        # Rails context (inventory lives here, not in player_state_prompt)
         rails_context = {
-            "inventory": player_state_prompt.get("inventory", []),
+            "inventory": state.player_state.get("inventory", []),
         }
 
         # Build party snapshot with player_slug
@@ -465,7 +558,7 @@ class PromptBuilder:
             f"SPEED_MULTIPLIER: {speed_mult}\n"
             f"DIFFICULTY: {difficulty}\n"
             f"ATTENTION_WINDOW_SECONDS: 600\n"
-            f"CURRENTLY_ATTENTIVE_PLAYERS: {_dump_json([])}\n"
+            f"CURRENTLY_ATTENTIVE_PLAYERS: {_dump_json(scenario.attentive_players)}\n"
             f"ACTIVE_PLAYER_LOCATION: {_dump_json(active_location)}\n"
             f"MEMORY_LOOKUP_ENABLED: {str(memory_enabled).lower()}\n"
             f"RECENT_TURNS_LOADED: true\n"
@@ -523,12 +616,19 @@ class PromptBuilder:
             user_prompt += f"ACTIVE_CONSEQUENCES: {_dump_json(active_consequences[:12])}\n"
 
         # Prompt tail: mirrors _build_turn_prompt_tail() —
-        # action first, then response_style_note last
+        # action first, then response_style_note, then WRITING_CRAFT last
         active_name = str(player_state_prompt.get("character_name") or "").strip()
         action_label = f"PLAYER_ACTION ({active_name.upper()})" if active_name else "PLAYER_ACTION"
         user_prompt += f"{action_label}: {turn.action}\n"
         if response_style_note:
             user_prompt += f"{response_style_note}\n"
+
+        # WRITING_CRAFT guidance — in the engine this is appended during the
+        # ready_to_write finalization transition. For single-shot benchmark
+        # flow, append it at the tail so the model reads it last.
+        writing_craft = getattr(ZorkEmulator, "WRITING_CRAFT_PROMPT", "")
+        if writing_craft:
+            user_prompt += writing_craft
 
         # ── System prompt (final-stage assembly) ───────────────────────
         # In the engine's three-stage flow, the final stage system prompt
@@ -696,7 +796,7 @@ class PromptBuilder:
 
     # ── Literary styles ──────────────────────────────────────────
 
-    MAX_LITERARY_STYLES_PROMPT_CHARS = 4000
+    MAX_LITERARY_STYLES_PROMPT_CHARS = 3000
 
     @classmethod
     def _literary_styles_for_prompt(
@@ -708,7 +808,7 @@ class PromptBuilder:
 
         Mirrors ZorkEmulator._literary_styles_for_prompt().
         """
-        styles = campaign_state.get("_literary_styles")
+        styles = campaign_state.get("literary_styles")
         if not isinstance(styles, dict) or not styles:
             return None
 

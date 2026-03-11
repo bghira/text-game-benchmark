@@ -216,7 +216,7 @@ class TestLiteraryStylesForPrompt:
 
     def test_renders_styles(self):
         campaign_state = {
-            "_literary_styles": {
+            "literary_styles": {
                 "noir": {"profile": "Dark, moody prose with clipped sentences."},
                 "epic": {"profile": "Grand sweeping descriptions."},
             },
@@ -229,7 +229,7 @@ class TestLiteraryStylesForPrompt:
 
     def test_active_refs_sorted_first(self):
         campaign_state = {
-            "_literary_styles": {
+            "literary_styles": {
                 "aaa": {"profile": "A style"},
                 "zzz": {"profile": "Z style"},
             },
@@ -318,7 +318,7 @@ class TestModelStateExclusion:
                     "game_time": {"day": 1},
                     "_active_puzzle": {"type": "riddle"},
                     "_sms_threads": [],
-                    "_literary_styles": {},
+                    "literary_styles": {},
                     "story_outline": {"act1": "begin"},
                     "room_id": "cave",
                 },
@@ -332,6 +332,40 @@ class TestModelStateExclusion:
         assert "_sms_threads" not in user_prompt.split("WORLD_STATE:")[1].split("\n")[0]
         # But visible keys should
         assert "tone" in user_prompt
+
+
+# ── Prompt tail ordering ────────────────────────────────────────
+
+# ── WRITING_CRAFT prompt ──────────────────────────────────────
+
+class TestWritingCraftInPrompt:
+    def test_writing_craft_present(self):
+        """WRITING_CRAFT section should appear in the user prompt."""
+        scenario = _make_scenario(campaign=CampaignSetup(name="test"))
+        state = AccumulatedState(scenario)
+        builder = PromptBuilder()
+        _, user_prompt = builder.build(scenario, TurnSpec(action="look"), state)
+        assert "WRITING_CRAFT:" in user_prompt
+
+    def test_writing_craft_after_action(self):
+        """WRITING_CRAFT should come after PLAYER_ACTION."""
+        scenario = _make_scenario(campaign=CampaignSetup(name="test"))
+        state = AccumulatedState(scenario)
+        builder = PromptBuilder()
+        _, user_prompt = builder.build(scenario, TurnSpec(action="look"), state)
+        action_pos = user_prompt.find("PLAYER_ACTION")
+        craft_pos = user_prompt.find("WRITING_CRAFT:")
+        assert action_pos >= 0
+        assert craft_pos > action_pos
+
+    def test_writing_craft_contains_key_directives(self):
+        """WRITING_CRAFT should contain the engine's craft principles."""
+        scenario = _make_scenario(campaign=CampaignSetup(name="test"))
+        state = AccumulatedState(scenario)
+        builder = PromptBuilder()
+        _, user_prompt = builder.build(scenario, TurnSpec(action="look"), state)
+        assert "concrete" in user_prompt.lower() or "sensory" in user_prompt.lower()
+        assert "precise word" in user_prompt.lower() or "vivid verb" in user_prompt.lower()
 
 
 # ── Prompt tail ordering ────────────────────────────────────────

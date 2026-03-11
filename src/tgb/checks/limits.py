@@ -27,6 +27,8 @@ SMS_FIELD_MAX_CHARS = 80       # thread, from, to
 SMS_MESSAGE_MAX_CHARS = 500
 SMS_DELAY_MIN = 0
 SMS_DELAY_MAX = 86400
+SMS_MAX_THREADS = 24
+SMS_MAX_MESSAGES_PER_THREAD = 40
 
 # ── Subplot / planning ──────────────────────────────────────────────
 
@@ -41,3 +43,7 @@ CALENDAR_TARGET_MAX_CHARS = 160
 
 TIMER_DELAY_MIN = 30
 TIMER_DELAY_MAX = 300
+
+# ── Inventory ──────────────────────────────────────────────────
+
+MAX_INVENTORY_CHANGES_PER_TURN = 10

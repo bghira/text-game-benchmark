@@ -8,6 +8,8 @@ The engine's calendar contract:
 - time_remaining must be a positive integer
 - known_by is an optional list of character names
 - target_player / target_players are optional player references
+- Engine normalizes time_remaining/time_unit into fire_day/fire_hour:
+  fire_day >= 1, fire_hour in 0-23
 """
 
 from __future__ import annotations
@@ -24,6 +26,7 @@ VALID_TIME_UNITS = {"hours", "days"}
 EVENT_REQUIRED_FIELDS = {"name", "time_remaining", "time_unit"}
 EVENT_OPTIONAL_FIELDS = {
     "description", "known_by", "target_player", "target_players",
+    "fire_day", "fire_hour",
 }
 EVENT_VALID_FIELDS = EVENT_REQUIRED_FIELDS | EVENT_OPTIONAL_FIELDS
 
@@ -194,5 +197,68 @@ def check_calendar_no_legacy_fields(
         check_id="calendar_no_legacy_fields",
         passed=True,
         detail="No legacy calendar fields",
+        category="calendar",
+    )
+
+
+def check_calendar_fire_range(
+    parsed: ParsedResponse,
+    scenario: Scenario,
+    turn: TurnSpec,
+    state: AccumulatedState,
+    params: dict[str, Any],
+) -> CheckResult:
+    """Validate fire_day/fire_hour ranges in calendar add events.
+
+    Engine enforces: fire_day >= 1, fire_hour in 0-23.
+    """
+    cal = parsed.parsed_json.get("calendar_update")
+    if not isinstance(cal, dict):
+        return CheckResult(
+            check_id="calendar_fire_range",
+            passed=True,
+            detail="No calendar_update",
+            category="calendar",
+        )
+
+    add_list = cal.get("add")
+    if not isinstance(add_list, list):
+        return CheckResult(
+            check_id="calendar_fire_range",
+            passed=True,
+            detail="No add list",
+            category="calendar",
+        )
+
+    issues: list[str] = []
+    for i, event in enumerate(add_list):
+        if not isinstance(event, dict):
+            continue
+
+        fire_day = event.get("fire_day")
+        if fire_day is not None:
+            if isinstance(fire_day, bool) or not isinstance(fire_day, (int, float)):
+                issues.append(f"add[{i}].fire_day must be an integer")
+            elif int(fire_day) < 1:
+                issues.append(f"add[{i}].fire_day={int(fire_day)} must be >= 1")
+
+        fire_hour = event.get("fire_hour")
+        if fire_hour is not None:
+            if isinstance(fire_hour, bool) or not isinstance(fire_hour, (int, float)):
+                issues.append(f"add[{i}].fire_hour must be an integer")
+            elif not (0 <= int(fire_hour) <= 23):
+                issues.append(f"add[{i}].fire_hour={int(fire_hour)} must be in 0-23")
+
+    if issues:
+        return CheckResult(
+            check_id="calendar_fire_range",
+            passed=False,
+            detail="; ".join(issues),
+            category="calendar",
+        )
+    return CheckResult(
+        check_id="calendar_fire_range",
+        passed=True,
+        detail="Calendar fire_day/fire_hour ranges valid",
         category="calendar",
     )

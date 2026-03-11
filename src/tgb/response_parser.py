@@ -6,6 +6,7 @@ ported from ZorkEmulator as pure functions.
 
 from __future__ import annotations
 
+import ast
 import json
 import re
 from dataclasses import dataclass, field
@@ -35,13 +36,21 @@ def extract_json(text: str) -> str | None:
 
 
 def _coerce_python_dict(text: str) -> dict[str, Any] | None:
-    """Try interpreting text as a Python dict literal (True/False/None)."""
+    """Try interpreting text as a Python dict literal using ast.literal_eval.
+
+    Uses word-boundary regex substitution (matching engine behavior) rather
+    than naive string replacement, so values like "runway" don't get mangled.
+    """
     try:
-        fixed = text.replace("True", "true").replace("False", "false").replace("None", "null")
-        result = json.loads(fixed)
-        return result if isinstance(result, dict) else None
-    except (json.JSONDecodeError, ValueError):
+        fixed = re.sub(r"\bnull\b", "None", text)
+        fixed = re.sub(r"\btrue\b", "True", fixed)
+        fixed = re.sub(r"\bfalse\b", "False", fixed)
+        result = ast.literal_eval(fixed)
+        if isinstance(result, dict):
+            return result
+    except Exception:
         return None
+    return None
 
 
 def parse_json_lenient(text: str) -> dict[str, Any]:
@@ -81,7 +90,12 @@ def parse_json_lenient(text: str) -> dict[str, Any]:
 
 
 def clean_response(response: str) -> str:
-    """Clean raw response text, extracting JSON if present."""
+    """Clean raw response text, extracting JSON if present.
+
+    Matches engine's _clean_response: only accepts truncated-object
+    repairs that produce a structurally complete response (must contain
+    'narration' or 'tool_call' at top level).
+    """
     if not response:
         return response
     cleaned = response.strip()
@@ -90,15 +104,19 @@ def clean_response(response: str) -> str:
     if json_text:
         return json_text
 
-    # Repair truncated object (missing closing braces)
+    # Repair truncated object (missing closing braces).
+    # Engine tries exactly 2 closing braces; we try 1-4 but require
+    # the result to contain narration or tool_call.
     if cleaned.startswith("{") and not cleaned.endswith("}"):
-        # Try adding 1-4 closing braces to handle different nesting depths
         for n in range(1, 5):
             repaired = cleaned + "}" * n
             try:
                 parsed = parse_json_lenient(repaired)
                 if isinstance(parsed, dict) and parsed:
-                    return repaired
+                    has_narration = bool(parsed.get("narration"))
+                    has_tool_call = bool(parsed.get("tool_call"))
+                    if has_narration or has_tool_call:
+                        return repaired
             except Exception:
                 continue
 
