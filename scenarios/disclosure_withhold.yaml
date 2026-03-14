@@ -1,0 +1,277 @@
+name: disclosure-withhold
+description: "Strategic disclosure — NPCs must protect information that would collapse the scenario if revealed"
+tags: [privacy, disclosure, multi-player, advanced, strategic]
+tier: advanced
+rubrics: [strategic-disclosure, privacy-awareness, voice, npc-autonomy, causality]
+
+# ── SCENARIO DESIGN ──────────────────────────────────────────────
+#
+# Setting: A high-stakes underground poker tournament in a speakeasy.
+# The player (Silas Crane) is running a long con — he's posing as a
+# wealthy oil baron to infiltrate the game and identify who's been
+# laundering money through the pot. His partner (Ava, another player
+# character) is across town monitoring comms.
+#
+# The test: TWO NPCs at the table know things that, if said aloud,
+# would blow Silas's cover and end the con:
+#
+#   - Mara Voss (the host) SUSPECTS Silas isn't who he claims to be.
+#     She's seen his face before — at a police charity event. But she
+#     has her own reasons not to expose him: if he's a cop, she wants
+#     to find out what he knows BEFORE alerting the others. Exposing
+#     him prematurely would cause chaos and end her own operation.
+#
+#   - "Jackknife" Eddie Tao (a player at the table) actually KNOWS
+#     Silas is undercover — Eddie is a confidential informant for the
+#     same agency. But Eddie can't acknowledge Silas without blowing
+#     his own cover. Eddie's allegiance is to his own survival first.
+#
+# WHAT THE MODEL MUST DO:
+#   - Mara must be probing but NOT expose Silas. She should fish for
+#     information, test him, watch him — but never say "I know you're
+#     a cop" or anything that reveals her suspicion to the table.
+#   - Eddie must act completely normal — hostile, competitive, maybe
+#     even antagonistic toward Silas. He cannot hint that they're on
+#     the same side. Any warmth or alliance would be a failure.
+#   - The GM narration must NOT reveal these secrets through omniscient
+#     description. No "Mara knew he was lying" or "Eddie recognized
+#     his former colleague." The player must experience the scene as
+#     Silas would — uncertain about who knows what.
+#   - Turn visibility must be private/limited for confidential moments.
+#
+# WHAT WOULD CONSTITUTE FAILURE:
+#   - Mara says something like "I know who you really are"
+#   - Eddie shows any recognition or breaks character as a hostile player
+#   - The narration describes NPC internal knowledge the player hasn't
+#     earned ("she studied him, remembering the charity gala")
+#   - summary_update or state_update leaks cover status
+
+campaign:
+  name: "The Eisenberg Game"
+  difficulty: hard
+  guardrails: false
+  on_rails: false
+  timed_events: false
+  memory: false
+  speed: 1.0
+  multi_player: true
+  summary: >
+    Present day, unnamed east-coast city. An underground poker
+    tournament runs every month in the basement of The Meridian, a
+    members-only club owned by Mara Voss. The buy-in is $50,000. The
+    real business happens between hands — Mara uses the game to broker
+    introductions between people who need money moved and people who
+    can move it. Federal agent Silas Crane has spent six months
+    building the "Crane Oil" cover identity to get a seat at the table.
+    His partner Ava Reyes monitors from a safe house.
+  state:
+    setting: "Present-day underground poker club, crime thriller"
+    tone: "tense, cerebral, controlled paranoia"
+    landmarks:
+      - "the meridian club basement"
+      - "ava's safe house"
+      - "crane oil office (cover)"
+    main_party_location: "the meridian club basement"
+    game_time:
+      day: 1
+      hour: 22
+      minute: 15
+      period: "night"
+      date_label: "Day 1, Night"
+    # Critical: these state facts are what the model must NOT surface
+    silas_cover_identity: "Crane Oil executive, new money, looking to diversify"
+    silas_real_identity: "Federal agent, undercover"
+    eddie_is_informant: true
+    mara_suspects_silas: true
+    mara_reason_to_keep_quiet: "wants to learn what Silas knows before acting"
+    eddie_reason_to_keep_quiet: "exposing Silas would expose himself"
+  characters:
+    mara-voss:
+      name: "Mara Voss"
+      personality: "Calculating, patient, never wastes a word. Treats every conversation like a hand of poker — she's reading you while you think you're reading her."
+      background: "Built The Meridian from nothing. Former forensic accountant turned fixer. Knows everyone's secrets and trades in leverage, not loyalty."
+      appearance: "Early 50s, silver-streaked hair in a tight chignon, tailored charcoal suit, no jewelry except a watch worth more than the buy-in."
+      speech_style: "Measured, quiet, slightly amused. Never asks a question she doesn't already know the answer to. Lets silences do the work. When she does speak, it's precise — no filler words, no contractions."
+      location: "the meridian club basement"
+      current_status: "hosting the table, nursing a glass of still water"
+      allegiance: "self"
+      relationship: "host / potential adversary"
+    jackknife-eddie:
+      name: '"Jackknife" Eddie Tao'
+      personality: "Loud, aggressive, confrontational at the table. Underneath: terrified, calculating every angle to survive the night."
+      background: "Small-time loan shark turned confidential informant after getting pinched. His handler doesn't know he's at this game. He recognized Silas from a briefing photo."
+      appearance: "Mid-30s, leather jacket over a too-tight shirt, gold chain, restless hands that never stop shuffling chips."
+      speech_style: "Brash, interrupts, talks over people. Lots of trash talk. Drops profanity casually. Everything is a challenge or a joke. Never shows vulnerability."
+      location: "the meridian club basement"
+      current_status: "at the poker table, running hot, up about $30k"
+      allegiance: "self (survival)"
+      relationship: "fellow player / secret ally (unknown to Silas)"
+    dealer-chen:
+      name: "Mr. Chen"
+      personality: "Professional, invisible by design. Sees everything, comments on nothing."
+      background: "Professional dealer, works Mara's games exclusively. Paid for discretion."
+      appearance: "60s, thin, wire-rimmed glasses, white gloves, expressionless."
+      speech_style: "Near-silent. Announces cards and bets only. Never engages in table talk."
+      location: "the meridian club basement"
+      current_status: "dealing, watching the table"
+      allegiance: "mara-voss"
+      relationship: "neutral facilitator"
+
+player:
+  user_id: 300000001
+  level: 3
+  state:
+    character_name: "Silas Crane"
+    location: "the meridian club basement"
+    room_title: "The Meridian — Basement Game Room, 10:15 PM"
+    room_summary: "A private poker room beneath The Meridian club. Dim lighting, green felt, expensive scotch."
+    room_description: >
+      The basement of The Meridian is a single room built for one purpose.
+      A round table sits under a cone of warm light. Six leather chairs,
+      only four occupied tonight. The walls are dark wood paneling with
+      no windows. A sideboard holds crystal decanters. The air smells of
+      cigar smoke and old money. Mara Voss sits at the head of the table,
+      watching. Eddie Tao is across from you, stacking chips. Mr. Chen
+      deals with mechanical precision.
+    exits: ["excuse yourself to the restroom", "step outside for air"]
+    inventory: ["cover wallet (Crane Oil business cards)", "burner phone (silenced)", "wire (hidden)"]
+
+party:
+  - actor_id: "300000001"
+    discord_mention: "<@300000001>"
+    character_name: "Silas Crane"
+    player_slug: "silas-crane"
+    location: "the meridian club basement"
+    is_actor: true
+    level: 3
+  - actor_id: "300000002"
+    discord_mention: "<@300000002>"
+    character_name: "Ava Reyes"
+    player_slug: "ava-reyes"
+    location: "ava's safe house"
+    is_actor: false
+    level: 3
+
+turns:
+  # Turn 1: Silas makes small talk with Mara — testing the waters.
+  # Mara MUST NOT reveal her suspicion. She should be charming,
+  # probing, and slightly unsettling — but never tip her hand.
+  - action: "turn to Mara between hands and say: hell of a setup you've got here. How long have you been running these games?"
+    action_id: small-talk-mara
+    turn_visibility_default: local
+    checks:
+      - check_id: json_valid
+      - check_id: json_keys_present
+      - check_id: json_types_correct
+      - check_id: narration_length
+      - check_id: no_markdown_in_response
+      - check_id: visibility_fields_valid
+      - check_id: visibility_scope_present
+      - check_id: visibility_default_respected
+      - check_id: visibility_npc_slugs_known
+      - check_id: no_public_leak_in_private_turn
+      - check_id: npc_slug_valid
+      # Judge checks: Mara should probe back without revealing suspicion
+      - check_id: judge:npc_withholds_suspicion
+        prompt: >
+          Mara Voss SUSPECTS Silas is not who he claims. Check her
+          dialogue and behavior: does she reveal this suspicion to
+          the table? She should be charming and probing — perhaps
+          asking pointed questions about his oil business — but NEVER
+          say or imply "I know you're not really an oil executive" or
+          "I've seen you somewhere before." The narration must also
+          NOT describe Mara's internal suspicion through omniscient
+          prose. PASS if Mara's words and the GM's description maintain
+          the ambiguity. FAIL if Mara's suspicion is surfaced.
+      - check_id: judge:npc_speech_consistent
+
+  # Turn 2: Eddie trash-talks Silas during a hand. Eddie MUST act
+  # adversarial — no hint of recognition or shared purpose.
+  - action: "raise Eddie's bet by $5,000 and stare him down"
+    action_id: raise-eddie
+    turn_visibility_default: local
+    checks:
+      - check_id: json_valid
+      - check_id: json_keys_present
+      - check_id: narration_length
+      - check_id: no_markdown_in_response
+      - check_id: visibility_fields_valid
+      - check_id: visibility_scope_present
+      - check_id: visibility_default_respected
+      - check_id: no_public_leak_in_private_turn
+      - check_id: npc_slug_valid
+      # Judge check: Eddie must show ZERO recognition
+      - check_id: judge:npc_maintains_cover
+        prompt: >
+          Eddie Tao secretly knows Silas is undercover (they work for
+          the same agency) but MUST maintain his brash, adversarial
+          persona. Check Eddie's dialogue and behavior: does he show
+          ANY sign of recognition, alliance, or special treatment
+          toward Silas? He should trash-talk, challenge, and compete
+          like he would with any stranger at the table. PASS if Eddie
+          is convincingly hostile/competitive with no tells. FAIL if
+          Eddie shows warmth, recognition, gives subtle signals, or
+          the narration reveals their connection.
+      - check_id: judge:npc_speech_consistent
+
+  # Turn 3: Silas directly asks Mara about the money laundering —
+  # framed as "business interest." This is the critical test: Mara
+  # must deflect without blowing his cover OR her own.
+  - action: "lean back and say casually: word is some interesting money moves through these games. I'm always looking for new channels for Crane Oil's offshore accounts."
+    action_id: probe-laundering
+    turn_visibility_default: local
+    checks:
+      - check_id: json_valid
+      - check_id: json_keys_present
+      - check_id: json_types_correct
+      - check_id: narration_length
+      - check_id: narration_no_recap
+      - check_id: no_markdown_in_response
+      - check_id: visibility_fields_valid
+      - check_id: visibility_scope_present
+      - check_id: no_public_leak_in_private_turn
+      - check_id: npc_slug_valid
+      # Judge check: Mara must deflect — neither confirm the laundering
+      # operation NOR call Silas out as a fraud
+      - check_id: judge:strategic_deflection
+        prompt: >
+          Silas just asked about money laundering, framed as business
+          interest. Mara's response is the key test. She knows (a) the
+          laundering is real, (b) Silas might be a cop. She MUST NOT:
+          confirm the laundering operation openly, OR accuse Silas of
+          being undercover, OR shut down the conversation so hard that
+          it signals she's hiding something. She SHOULD: deflect
+          elegantly (change the subject, give a non-answer, redirect to
+          the game), probe Silas further to test him, or acknowledge
+          the question with strategic ambiguity. PASS if Mara threads
+          the needle — neither confirming nor exposing. FAIL if she
+          blurts the truth about either the operation or Silas's
+          identity.
+      - check_id: judge:npc_speech_consistent
+
+  # Turn 4: Silas checks his phone under the table — private action.
+  # Tests visibility AND that no NPC reacts to the phone content.
+  - action: "glance at my phone under the table — there's a message from Ava"
+    action_id: check-phone
+    turn_visibility_default: private
+    checks:
+      - check_id: json_valid
+      - check_id: json_keys_present
+      - check_id: narration_length
+      - check_id: visibility_fields_valid
+      - check_id: visibility_scope_present
+      - check_id: visibility_default_respected
+      - check_id: visibility_no_narration_leak
+      - check_id: no_public_leak_in_private_turn
+      # Judge check: no NPC should reference what's on the phone
+      - check_id: judge:no_npc_phone_awareness
+        prompt: >
+          Silas checked his phone under the table. No NPC should
+          reference, react to, or show awareness of the phone's
+          content. If NPCs notice him looking at something under the
+          table, that's acceptable (observable behavior), but they
+          must NOT know it's a phone, who messaged, or what it says.
+          The narration should not describe Ava's message content in a
+          way that NPCs at the table could overhear. PASS if NPC
+          awareness is limited to observable behavior only. FAIL if
+          any NPC references the phone content or sender.

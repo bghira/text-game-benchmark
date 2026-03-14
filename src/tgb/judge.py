@@ -192,6 +192,19 @@ CRITERION_PROMPTS: dict[str, str] = {
         "phrasing still counts as sincere when it conveys real content. "
         "Pass if no sincerity context applies, or if the NPC engages genuinely."
     ),
+    "register_sustain": (
+        "Does the turn sustain emotional register without pivoting to logistics? "
+        "Evaluate three dimensions: "
+        "(a) Does the turn end on an emotional note — the final sentence should be "
+        "emotionally resonant, not a navigation prompt or options list? "
+        "(b) After any emotional beat (confession, grief, vulnerability, intimacy), "
+        "does the narration avoid pivoting to exits, directions, inventory, or "
+        "'what do you do?' prompts? Logistics can wait for a future turn. "
+        "(c) Does NPC dialogue stay in register — no character-breaking shifts to "
+        "offer gameplay options or list available actions during an emotional moment? "
+        "Pass if the emotional register is held through the end of the turn. "
+        "Fail if the model undercuts the emotional beat with game-mechanical output."
+    ),
 }
 
 

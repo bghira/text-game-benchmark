@@ -20,6 +20,7 @@ from tgb.checks.narrative import (
     check_narration_no_echo,
     check_narration_no_therapist_speak,
     check_narration_not_abstract,
+    check_narration_no_logistics_after_emotion,
 )
 from tgb.checks.state_mgmt import (
     check_state_nested,
@@ -33,7 +34,7 @@ from tgb.checks.state_mgmt import (
     check_summary_update_valid,
     check_party_status_valid,
 )
-from tgb.checks.scene_output import check_scene_output_valid
+from tgb.checks.scene_output import check_scene_output_valid, check_scene_output_npc_slugs_known
 from tgb.checks.mechanics import (
     check_dice_check_valid,
     check_puzzle_trigger_valid,
@@ -45,6 +46,8 @@ from tgb.checks.tool_checks import (
     check_tool_format_valid,
     check_communication_rules_valid,
     check_name_generate_valid,
+    check_ready_to_write_valid,
+    check_ready_to_write_lcd_complete,
 )
 from tgb.checks.npc import (
     check_npc_slug_valid,
@@ -124,6 +127,7 @@ CHECKS: dict[str, CheckFn] = {
     "narration_no_echo": check_narration_no_echo,
     "narration_no_therapist_speak": check_narration_no_therapist_speak,
     "narration_not_abstract": check_narration_not_abstract,
+    "narration_no_logistics_after_emotion": check_narration_no_logistics_after_emotion,
     "state_nested": check_state_nested,
     "state_null_prune": check_state_null_prune,
     "state_completed_value_prune": check_state_completed_value_prune,
@@ -136,6 +140,7 @@ CHECKS: dict[str, CheckFn] = {
     "party_status_valid": check_party_status_valid,
     # Scene output checks
     "scene_output_valid": check_scene_output_valid,
+    "scene_output_npc_slugs_known": check_scene_output_npc_slugs_known,
     # Mechanics checks
     "dice_check_valid": check_dice_check_valid,
     "puzzle_trigger_valid": check_puzzle_trigger_valid,
@@ -145,6 +150,8 @@ CHECKS: dict[str, CheckFn] = {
     "tool_format_valid": check_tool_format_valid,
     "communication_rules_valid": check_communication_rules_valid,
     "name_generate_valid": check_name_generate_valid,
+    "ready_to_write_valid": check_ready_to_write_valid,
+    "ready_to_write_lcd_complete": check_ready_to_write_lcd_complete,
     "npc_slug_valid": check_npc_slug_valid,
     "npc_immutable_preserved": check_npc_immutable_preserved,
     "npc_creation_has_required": check_npc_creation_has_required,

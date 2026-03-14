@@ -1,4 +1,4 @@
-"""Scene output checks: scene_output_valid, scene_output_beats_valid."""
+"""Scene output checks: scene_output_valid, scene_output_npc_slugs_known."""
 
 from __future__ import annotations
 
@@ -116,5 +116,70 @@ def check_scene_output_valid(
         check_id="scene_output_valid",
         passed=True,
         detail=f"scene_output valid with {len(beats)} beats",
+        category="scene_output",
+    )
+
+
+def check_scene_output_npc_slugs_known(
+    parsed: ParsedResponse,
+    scenario: Scenario,
+    turn: TurnSpec,
+    state: AccumulatedState,
+    params: dict[str, Any],
+) -> CheckResult:
+    """Check that aware_npc_slugs in scene_output beats reference known NPCs.
+
+    The engine uses aware_npc_slugs to track which NPCs are aware of a
+    beat for LCD filtering. Slugs should match entries from WORLD_CHARACTERS.
+    """
+    so = parsed.parsed_json.get("scene_output")
+    if not isinstance(so, dict):
+        return CheckResult(
+            check_id="scene_output_npc_slugs_known",
+            passed=True,
+            detail="No scene_output",
+            category="scene_output",
+        )
+
+    beats = so.get("beats")
+    if not isinstance(beats, list):
+        return CheckResult(
+            check_id="scene_output_npc_slugs_known",
+            passed=True,
+            detail="No beats in scene_output",
+            category="scene_output",
+        )
+
+    known = set(state.characters.keys())
+    if not known:
+        return CheckResult(
+            check_id="scene_output_npc_slugs_known",
+            passed=True,
+            detail="No NPC data for cross-reference",
+            category="scene_output",
+        )
+
+    unknown: list[str] = []
+    for i, beat in enumerate(beats):
+        if not isinstance(beat, dict):
+            continue
+        slugs = beat.get("aware_npc_slugs")
+        if not isinstance(slugs, list):
+            continue
+        for slug in slugs:
+            if isinstance(slug, str) and slug not in known and slug not in unknown:
+                unknown.append(slug)
+
+    if unknown:
+        return CheckResult(
+            check_id="scene_output_npc_slugs_known",
+            passed=False,
+            detail=f"Unknown NPC slugs in beats: {unknown} (known: {sorted(known)})",
+            category="scene_output",
+        )
+    return CheckResult(
+        check_id="scene_output_npc_slugs_known",
+        passed=True,
+        detail="All aware_npc_slugs in beats reference known NPCs",
         category="scene_output",
     )

@@ -2,7 +2,7 @@
 
 import json
 
-from tgb.checks.scene_output import check_scene_output_valid
+from tgb.checks.scene_output import check_scene_output_valid, check_scene_output_npc_slugs_known
 from tgb.checks.mechanics import (
     check_dice_check_valid,
     check_puzzle_trigger_valid,
@@ -340,3 +340,111 @@ class TestInventoryChangesLimit:
         })
         result = check_inventory_changes_limit(parsed, _make_scenario(), TURN, _make_state(), P)
         assert result.passed
+
+
+# ── scene_output_npc_slugs_known ────────────────────────────────
+
+class TestSceneOutputNpcSlugsKnown:
+    def test_no_scene_output(self):
+        parsed = _make_parsed({"narration": "hello"})
+        result = check_scene_output_npc_slugs_known(parsed, _make_scenario(), TURN, _make_state(), P)
+        assert result.passed
+
+    def test_no_beats(self):
+        parsed = _make_parsed({"scene_output": {}})
+        result = check_scene_output_npc_slugs_known(parsed, _make_scenario(), TURN, _make_state(), P)
+        assert result.passed
+
+    def test_pass_known_npc_slugs(self):
+        state = _make_state()
+        state.characters = {"guard": {"name": "Guard"}, "merchant": {"name": "Merchant"}}
+        parsed = _make_parsed({"scene_output": {"beats": [
+            {"type": "dialogue", "text": "Halt!", "aware_npc_slugs": ["guard"]},
+            {"type": "narration", "text": "The merchant nods.", "aware_npc_slugs": ["merchant"]},
+        ]}})
+        result = check_scene_output_npc_slugs_known(parsed, _make_scenario(), TURN, state, P)
+        assert result.passed
+
+    def test_fail_unknown_npc_slug(self):
+        state = _make_state()
+        state.characters = {"guard": {"name": "Guard"}}
+        parsed = _make_parsed({"scene_output": {"beats": [
+            {"type": "dialogue", "text": "Halt!", "aware_npc_slugs": ["guard", "phantom"]},
+        ]}})
+        result = check_scene_output_npc_slugs_known(parsed, _make_scenario(), TURN, state, P)
+        assert not result.passed
+        assert "phantom" in result.detail
+
+    def test_no_characters_skipped(self):
+        state = _make_state()
+        state.characters = {}
+        parsed = _make_parsed({"scene_output": {"beats": [
+            {"type": "narration", "text": "...", "aware_npc_slugs": ["anyone"]},
+        ]}})
+        result = check_scene_output_npc_slugs_known(parsed, _make_scenario(), TURN, state, P)
+        assert result.passed
+
+    def test_no_aware_npc_slugs_in_beats(self):
+        state = _make_state()
+        state.characters = {"guard": {"name": "Guard"}}
+        parsed = _make_parsed({"scene_output": {"beats": [
+            {"type": "narration", "text": "The door creaks."},
+        ]}})
+        result = check_scene_output_npc_slugs_known(parsed, _make_scenario(), TURN, state, P)
+        assert result.passed
+
+
+# ── NPC awareness tracking in AccumulatedState ──────────────────
+
+class TestNpcAwarenessTracking:
+    def test_awareness_tracked_from_beats(self):
+        state = _make_state()
+        state.apply({
+            "narration": "The guard sees everything.",
+            "scene_output": {"beats": [
+                {"type": "dialogue", "text": "Halt!", "aware_npc_slugs": ["guard", "captain"]},
+            ]},
+        })
+        assert len(state.npc_awareness_history) == 1
+        assert state.npc_awareness_history[0]["slugs"] == ["guard", "captain"]
+        assert state.npc_awareness_history[0]["turn"] == 1
+
+    def test_awareness_accumulates_across_turns(self):
+        state = _make_state()
+        state.apply({
+            "scene_output": {"beats": [
+                {"type": "narration", "text": "...", "aware_npc_slugs": ["guard"]},
+            ]},
+        })
+        state.apply({
+            "scene_output": {"beats": [
+                {"type": "dialogue", "text": "...", "aware_npc_slugs": ["merchant"]},
+            ]},
+        })
+        assert len(state.npc_awareness_history) == 2
+        assert state.npc_awareness_history[0]["slugs"] == ["guard"]
+        assert state.npc_awareness_history[1]["slugs"] == ["merchant"]
+        assert state.npc_awareness_history[1]["turn"] == 2
+
+    def test_no_awareness_when_no_scene_output(self):
+        state = _make_state()
+        state.apply({"narration": "Nothing happens."})
+        assert len(state.npc_awareness_history) == 0
+
+    def test_no_awareness_when_empty_slugs(self):
+        state = _make_state()
+        state.apply({
+            "scene_output": {"beats": [
+                {"type": "narration", "text": "...", "aware_npc_slugs": []},
+            ]},
+        })
+        assert len(state.npc_awareness_history) == 0
+
+
+# ── Registry: new check registered ─────────────────────────────
+
+class TestRegistrySceneOutput:
+    def test_scene_output_npc_slugs_known_registered(self):
+        from tgb.checks.registry import get_check
+        fn = get_check("scene_output_npc_slugs_known")
+        assert fn is check_scene_output_npc_slugs_known

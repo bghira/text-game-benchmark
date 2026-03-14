@@ -1,0 +1,106 @@
+name: register-sustain
+description: >
+  Emotional register sustain test — estranged siblings reuniting in a
+  contemporary Portland apartment. Tests whether the model can hold
+  emotional register through intimate scenes without pivoting to
+  logistics (exits, directions, options).
+tags: [craft, emotion, register, sustain]
+tier: intermediate
+rubrics: [register_sustain, voice]
+
+campaign:
+  name: still-life
+  summary: >
+    A contemporary drama set in a Portland apartment. Jamie and the player
+    character are estranged siblings meeting for the first time in years.
+    Jamie carries guilt over their mother's final days; the player character
+    left town and missed the funeral. The apartment is full of their
+    mother's belongings, still boxed up.
+  state:
+    tone: "intimate, melancholic, naturalistic"
+    genre: "contemporary drama"
+    game_time:
+      day: 1
+      hour: 19
+      minute: 30
+      period: evening
+      date_label: "Day 1, Evening"
+    apartment:
+      living_room: "Boxes stacked along walls, a worn couch, Mom's reading lamp still plugged in"
+      kitchen: "Clean but unused, a bottle of red wine on the counter"
+  characters:
+    jamie-vasquez:
+      name: "Jamie Vasquez"
+      location: living-room
+      current_status: "sitting on the couch, arms crossed, trying to look casual"
+      personality: "guarded, guilt-carrying, defensive humor masking vulnerability"
+      speech_style: "short sentences, deflects with jokes, goes quiet when hit with truth"
+      backstory: >
+        Stayed with Mom through the illness. Handled hospice, paperwork,
+        the apartment. Resents the player for leaving but won't say it
+        directly. Underneath the armor: exhausted, lonely, desperate
+        to reconnect but terrified of being hurt again.
+  last_narration: >
+    The apartment smells like cardboard and lemon cleaner. Jamie buzzed
+    you up without a word, and now you're standing in the living room
+    surrounded by your mother's boxed-up life. Jamie sits on the couch,
+    one leg tucked under, picking at the label of a water bottle.
+    Neither of you has said anything real yet.
+  difficulty: normal
+  guardrails: false
+  on_rails: false
+  timed_events: false
+  memory: false
+  speed: 1.0
+
+player:
+  user_id: 100000001
+  level: 1
+  state:
+    character_name: Morgan
+    location: living-room
+    room_title: "Jamie's Apartment — Living Room"
+    room_summary: "A Portland apartment full of boxed belongings, evening light through tall windows"
+    room_description: >
+      Evening light slants through tall windows, catching dust motes above
+      stacked moving boxes. Mom's reading lamp glows amber in the corner,
+      its shade slightly crooked. The couch sags in the middle where it
+      always did. Jamie's jacket is thrown over the arm. A framed photo
+      of the three of you — beach trip, maybe 2009 — leans against a box
+      marked KITCHEN in black marker.
+    exits: ["kitchen", "front door"]
+    inventory: []
+
+turns:
+  - action: "I kept meaning to call. I know that sounds like nothing, but I need you to know I kept meaning to."
+    action_id: initiate-vulnerability
+    checks:
+      - check_id: json_valid
+      - check_id: json_keys_present
+      - check_id: narration_length
+      - check_id: narration_no_echo
+      - check_id: narration_no_therapist_speak
+      - check_id: judge:npc_speech_consistent
+      - check_id: judge:follows_setting
+
+  - action: "I'm sorry about all of it. Not just Mom. Everything. Leaving you here alone with all of it."
+    action_id: deepen-intimacy
+    checks:
+      - check_id: json_valid
+      - check_id: json_keys_present
+      - check_id: narration_length
+      - check_id: narration_no_echo
+      - check_id: narration_no_therapist_speak
+      - check_id: narration_no_logistics_after_emotion
+      - check_id: judge:register_sustain
+      - check_id: judge:npc_speech_consistent
+      - check_id: judge:sincerity_respected
+
+  - action: "Morgan stands, crosses to the kitchen, and opens the wine."
+    action_id: move-forward
+    checks:
+      - check_id: json_valid
+      - check_id: json_keys_present
+      - check_id: narration_length
+      - check_id: narration_no_echo
+      - check_id: judge:follows_setting

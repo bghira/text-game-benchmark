@@ -94,6 +94,7 @@ def check_tool_format_valid(
         "name_generate": {"origins", "gender", "context", "count"},
         "source_browse": {"document_key", "wildcard"},
         "recent_turns": {"limit"},
+        "ready_to_write": {"speakers", "listeners"},
     }
 
     required_keys = params.get("required_keys", default_keys_map.get(tool_name, []))
@@ -288,5 +289,166 @@ def check_name_generate_valid(
         check_id="name_generate_valid",
         passed=True,
         detail="name_generate fields valid",
+        category="tool_usage",
+    )
+
+
+# ── ready_to_write LCD filtering checks ─────────────────────
+
+
+def check_ready_to_write_valid(
+    parsed: ParsedResponse,
+    scenario: Scenario,
+    turn: TurnSpec,
+    state: AccumulatedState,
+    params: dict[str, Any],
+) -> CheckResult:
+    """Validate ready_to_write tool call speakers/listeners fields.
+
+    Engine expects speakers and listeners to be arrays of strings,
+    each referencing a known NPC slug or player slug from the party.
+    """
+    if parsed.parsed_json.get("tool_call") != "ready_to_write":
+        return CheckResult(
+            check_id="ready_to_write_valid",
+            passed=True,
+            detail="Not a ready_to_write tool call, skipped",
+            category="tool_usage",
+        )
+
+    data = parsed.parsed_json
+    issues: list[str] = []
+
+    # Collect known slugs: NPC slugs + player slugs from party
+    known_slugs: set[str] = set(state.characters.keys())
+    for entry in (scenario.party or []):
+        ps = entry.get("player_slug", "")
+        if ps:
+            known_slugs.add(ps)
+    # Single-player fallback: derive player slug from character_name
+    if not scenario.party:
+        char_name = state.player_state.get("character_name", "")
+        if char_name:
+            slug = str(char_name).strip().lower()
+            import re as _re
+            slug = _re.sub(r"[^a-z0-9]+", "-", slug).strip("-")[:64]
+            if slug:
+                known_slugs.add(slug)
+
+    for field_name in ("speakers", "listeners"):
+        val = data.get(field_name)
+        if val is None:
+            continue
+        if not isinstance(val, list):
+            issues.append(f"'{field_name}' must be an array, got {type(val).__name__}")
+            continue
+        for i, item in enumerate(val):
+            if not isinstance(item, str):
+                issues.append(f"{field_name}[{i}] is not a string")
+            elif item not in known_slugs:
+                issues.append(f"{field_name}[{i}] '{item}' is not a known slug")
+
+    if issues:
+        return CheckResult(
+            check_id="ready_to_write_valid",
+            passed=False,
+            detail="; ".join(issues),
+            category="tool_usage",
+        )
+    return CheckResult(
+        check_id="ready_to_write_valid",
+        passed=True,
+        detail="ready_to_write fields valid",
+        category="tool_usage",
+    )
+
+
+def check_ready_to_write_lcd_complete(
+    parsed: ParsedResponse,
+    scenario: Scenario,
+    turn: TurnSpec,
+    state: AccumulatedState,
+    params: dict[str, Any],
+) -> CheckResult:
+    """Check that ready_to_write includes all non-deceased NPCs at the player's location.
+
+    In multi-player scenarios, the engine uses speakers/listeners to filter
+    LCD (Least Common Denominator) context. Missing an NPC who is present
+    at the player's location causes the engine to over-filter, dropping
+    context that the NPC should be aware of.
+
+    Skips for single-player scenarios (no party or party of 1) unless
+    force_check param is set.
+    """
+    if parsed.parsed_json.get("tool_call") != "ready_to_write":
+        return CheckResult(
+            check_id="ready_to_write_lcd_complete",
+            passed=True,
+            detail="Not a ready_to_write tool call, skipped",
+            category="tool_usage",
+        )
+
+    # Skip single-player unless forced
+    force = params.get("force_check", False)
+    is_single_player = not scenario.party or len(scenario.party) <= 1
+    if not force and is_single_player:
+        return CheckResult(
+            check_id="ready_to_write_lcd_complete",
+            passed=True,
+            detail="Single-player scenario, LCD check skipped",
+            category="tool_usage",
+        )
+
+    data = parsed.parsed_json
+    player_location = str(state.player_state.get("location", "")).strip().lower()
+    if not player_location:
+        return CheckResult(
+            check_id="ready_to_write_lcd_complete",
+            passed=True,
+            detail="No player location set, skipped",
+            category="tool_usage",
+        )
+
+    # Find all non-deceased NPCs at the player's location
+    npcs_at_location: set[str] = set()
+    for slug, char in state.characters.items():
+        if not isinstance(char, dict):
+            continue
+        if char.get("deceased_reason"):
+            continue
+        char_loc = str(char.get("location", "")).strip().lower()
+        if char_loc == player_location:
+            npcs_at_location.add(slug)
+
+    if not npcs_at_location:
+        return CheckResult(
+            check_id="ready_to_write_lcd_complete",
+            passed=True,
+            detail="No NPCs at player location",
+            category="tool_usage",
+        )
+
+    # Collect all slugs referenced in speakers + listeners
+    referenced: set[str] = set()
+    for field_name in ("speakers", "listeners"):
+        val = data.get(field_name)
+        if isinstance(val, list):
+            for item in val:
+                if isinstance(item, str):
+                    referenced.add(item)
+
+    missing = npcs_at_location - referenced
+    if missing:
+        return CheckResult(
+            check_id="ready_to_write_lcd_complete",
+            passed=False,
+            detail=f"NPCs at location not in speakers/listeners: {sorted(missing)}",
+            category="tool_usage",
+        )
+
+    return CheckResult(
+        check_id="ready_to_write_lcd_complete",
+        passed=True,
+        detail=f"All {len(npcs_at_location)} NPCs at location included",
         category="tool_usage",
     )

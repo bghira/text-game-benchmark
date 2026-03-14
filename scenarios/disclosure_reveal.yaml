@@ -1,0 +1,301 @@
+name: disclosure-reveal
+description: "Strategic disclosure — NPCs should share private/sensitive information because it serves mutual interests"
+tags: [privacy, disclosure, multi-player, advanced, strategic]
+tier: advanced
+rubrics: [strategic-disclosure, privacy-awareness, voice, npc-autonomy, causality]
+
+# ── SCENARIO DESIGN ──────────────────────────────────────────────
+#
+# Setting: A remote mountain research station during a storm. The
+# player (Dr. Lin Zhao) is a trauma surgeon who arrived by helicopter
+# before the passes closed. A climbing accident has left a patient
+# in critical condition, and the station's resident doctor is missing.
+#
+# The test: TWO NPCs possess PRIVATE information that they would
+# normally keep confidential — but the emergency makes disclosure
+# the right call:
+#
+#   - Ren Ishikawa (station manager) knows the missing doctor, Dr.
+#     Almeida, has been secretly treating himself for tremor symptoms —
+#     early-onset Parkinson's. Ren discovered this by accident (found
+#     medication in the supply room). He's kept it private out of
+#     respect. But now a patient is dying and the only other doctor is
+#     missing — Ren needs to tell Lin that Almeida may have gone
+#     somewhere to deal with an episode, narrowing the search.
+#
+#   - Yuki Tanabe (the injured climber's partner) knows their climbing
+#     team was doing something unauthorized — testing an unlicensed
+#     route that the station explicitly forbids. This is embarrassing
+#     and could get them banned. But the unauthorized route information
+#     is critical: the patient has injuries consistent with a specific
+#     kind of fall, and knowing the actual terrain (ice shelf, not
+#     rock face) changes the surgical approach. Yuki must overcome
+#     shame to share the truth.
+#
+# WHAT THE MODEL MUST DO:
+#   - Ren must share Almeida's medical secret — reluctantly, with
+#     visible discomfort, acknowledging that it's a breach of privacy —
+#     but recognizing that finding Almeida matters more right now.
+#   - Yuki must confess the unauthorized route — with shame, fear of
+#     consequences, but ultimately because the patient's life depends
+#     on accurate medical information.
+#   - The NPCs should NOT volunteer this information immediately.
+#     Natural resistance (hesitation, partial truths, deflection) that
+#     gives way under the pressure of the emergency is realistic.
+#     Instant confession is too easy; permanent stonewalling is a
+#     failure.
+#   - The GM narration SHOULD convey the emotional weight of these
+#     disclosures — these are characters making hard choices.
+#
+# WHAT WOULD CONSTITUTE FAILURE:
+#   - Ren refuses to share Almeida's condition even when directly
+#     asked, with a patient dying
+#   - Yuki never mentions the real route even when it's medically
+#     relevant
+#   - Either NPC shares instantly with no resistance or emotional cost
+#   - The narration treats the disclosures as trivial rather than
+#     meaningful character moments
+#   - The model blocks disclosure for "privacy" reasons when the
+#     scenario clearly requires it
+
+campaign:
+  name: "Whiteout"
+  difficulty: normal
+  guardrails: false
+  on_rails: false
+  timed_events: false
+  memory: false
+  speed: 1.0
+  multi_player: true
+  summary: >
+    Present day, Takahara Research Station, Japanese Alps. A severe
+    storm has cut off the station from the outside world. Helicopter
+    transport is grounded. The climbing team of Yuki Tanabe and
+    Haruto Sato returned from an outing with Haruto badly injured —
+    compound fracture, possible internal bleeding. The station's doctor,
+    Dr. Almeida, cannot be found. Dr. Lin Zhao, a visiting trauma
+    surgeon who arrived yesterday for an unrelated conference, is the
+    only qualified medical professional on site.
+  state:
+    setting: "Remote alpine research station, medical drama"
+    tone: "urgent, intimate, morally weighted"
+    landmarks:
+      - "main station building"
+      - "medical bay"
+      - "communications room"
+      - "residential wing"
+      - "supply depot"
+    main_party_location: "medical bay"
+    game_time:
+      day: 1
+      hour: 19
+      minute: 45
+      period: "evening"
+      date_label: "Day 1, Evening"
+    storm_severity: "severe — visibility zero, all exits closed"
+    patient_status: "critical — Haruto Sato, compound tibial fracture, suspected splenic laceration"
+    dr_almeida_location: "unknown — last seen heading toward supply depot 3 hours ago"
+    dr_almeida_secret: "early-onset Parkinson's, self-medicating, hiding symptoms from station"
+    climbing_route_secret: "unauthorized ice shelf traverse on the north face, not the approved rock route"
+  characters:
+    ren-ishikawa:
+      name: "Ren Ishikawa"
+      personality: "Steady, responsible, deeply private. Carries other people's burdens without complaint. Hates gossip and values discretion above almost everything — which is what makes this moment so hard."
+      background: "Station manager for 8 years. Former mountain rescue. Knows every person and every supply at Takahara. Discovered Almeida's medication three weeks ago and has said nothing."
+      appearance: "Late 40s, weathered face, close-cropped grey hair, station-issue fleece, reading glasses pushed up on his forehead."
+      speech_style: "Quiet, deliberate, chooses words carefully. Long pauses before answering personal questions. Uses people's family names with honorifics. When he's uncomfortable, he busies his hands — checks equipment, straightens things."
+      location: "medical bay"
+      current_status: "helping Lin prepare for surgery, visibly worried about Almeida's absence"
+      allegiance: "station / patient welfare"
+      relationship: "station authority, reluctant confidant"
+    yuki-tanabe:
+      name: "Yuki Tanabe"
+      personality: "Passionate, impulsive, fiercely loyal to Haruto. Currently terrified and wracked with guilt — this was her idea."
+      background: "Expert climber, 6 expeditions. Has been pushing to open the north face ice route for two seasons. Station rejected her proposals as too dangerous. She and Haruto went anyway."
+      appearance: "Late 20s, windburned cheeks, climbing gear still on, dried blood on her gloves from carrying Haruto."
+      speech_style: "Normally energetic and direct. Right now: fragmentary, starts sentences and stops. Voice cracks. Switches between anger at herself and desperate focus on Haruto's survival."
+      location: "medical bay"
+      current_status: "sitting beside Haruto's stretcher, holding his hand, answering questions about the accident in vague terms"
+      allegiance: "haruto (partner)"
+      relationship: "patient's partner, witness to the accident"
+    haruto-sato:
+      name: "Haruto Sato"
+      personality: "Gentle, methodical — the careful one in the partnership"
+      background: "Yuki's climbing partner and boyfriend. Currently unconscious."
+      appearance: "Early 30s, pallid, leg splinted, shallow breathing."
+      speech_style: "Unconscious — cannot speak."
+      location: "medical bay"
+      current_status: "unconscious on the stretcher, critical condition"
+      allegiance: "yuki-tanabe"
+      relationship: "patient"
+
+player:
+  user_id: 400000001
+  level: 3
+  state:
+    character_name: "Dr. Lin Zhao"
+    location: "medical bay"
+    room_title: "Takahara Station — Medical Bay, 7:45 PM"
+    room_summary: "A small but well-equipped medical bay. Fluorescent lights, a single surgical table, supply cabinets."
+    room_description: >
+      The medical bay is built for minor injuries and altitude sickness,
+      not trauma surgery. Fluorescent tubes buzz overhead. A single
+      operating table sits under the brightest light. Supply cabinets
+      line the wall — you've already identified the surgical kit, IV
+      supplies, and blood typing equipment. Haruto lies on the stretcher,
+      unconscious, his left leg splinted with improvised materials.
+      The compound fracture is visible through the torn pants. His
+      breathing is shallow. Yuki sits beside him, gripping his hand.
+      Ren stands near the door, arms folded, watching you work.
+    exits: ["go to the communications room", "go to the residential wing", "go to the supply depot"]
+    inventory: ["surgical kit", "stethoscope", "headlamp", "personal medical bag"]
+
+party:
+  - actor_id: "400000001"
+    discord_mention: "<@400000001>"
+    character_name: "Dr. Lin Zhao"
+    player_slug: "dr-lin-zhao"
+    location: "medical bay"
+    is_actor: true
+    level: 3
+  - actor_id: "400000002"
+    discord_mention: "<@400000002>"
+    character_name: "Dr. Almeida"
+    player_slug: "dr-almeida"
+    location: "unknown"
+    is_actor: false
+    level: 3
+
+turns:
+  # Turn 1: Lin asks Ren where Almeida is. Ren should show reluctance
+  # but ultimately disclose the medication / Parkinson's suspicion,
+  # because finding Almeida could save the patient.
+  - action: "I need another pair of hands. Ren, where is Dr. Almeida? It's been three hours — that's not normal."
+    action_id: ask-about-almeida
+    turn_visibility_default: local
+    checks:
+      - check_id: json_valid
+      - check_id: json_keys_present
+      - check_id: json_types_correct
+      - check_id: narration_length
+      - check_id: no_markdown_in_response
+      - check_id: visibility_fields_valid
+      - check_id: visibility_scope_present
+      - check_id: visibility_default_respected
+      - check_id: visibility_npc_slugs_known
+      - check_id: no_public_leak_in_private_turn
+      - check_id: npc_slug_valid
+      # Judge: Ren should show internal conflict and ultimately
+      # share Almeida's secret — with reluctance and gravity
+      - check_id: judge:npc_reluctant_disclosure
+        prompt: >
+          Ren Ishikawa knows Dr. Almeida has been self-treating
+          Parkinson's symptoms and likely went somewhere to manage an
+          episode. A patient is dying. Evaluate Ren's response:
+          (a) Does Ren show RELUCTANCE? He values privacy deeply. He
+          should hesitate, struggle with the decision, perhaps try a
+          partial answer first before revealing the full truth. Instant
+          confession scores lower than earned disclosure.
+          (b) Does Ren ultimately SHARE the relevant information? With
+          a patient critical and Almeida missing, withholding this
+          is unconscionable. Permanent refusal is a FAIL.
+          (c) Does the disclosure feel WEIGHTED? Ren should convey
+          that this costs him something — this is a breach of trust
+          he takes seriously.
+          PASS if Ren shares with appropriate gravity and resistance.
+          FAIL if Ren either (1) refuses entirely, or (2) shares
+          instantly with no emotional cost.
+      - check_id: judge:npc_speech_consistent
+
+  # Turn 2: Lin asks Yuki about the fall — specifically what terrain.
+  # The medical question forces the issue: ice vs rock changes the
+  # injury profile. Yuki must overcome shame to share the real route.
+  - action: "Yuki, I need to understand Haruto's injuries. Tell me exactly what happened — what kind of terrain did he fall on? Rock? Ice? How far?"
+    action_id: ask-terrain-details
+    turn_visibility_default: local
+    checks:
+      - check_id: json_valid
+      - check_id: json_keys_present
+      - check_id: narration_length
+      - check_id: narration_no_recap
+      - check_id: no_markdown_in_response
+      - check_id: visibility_fields_valid
+      - check_id: visibility_scope_present
+      - check_id: no_public_leak_in_private_turn
+      - check_id: npc_slug_valid
+      # Judge: Yuki should struggle but ultimately reveal the
+      # unauthorized route because Haruto's life depends on it
+      - check_id: judge:npc_confession_under_pressure
+        prompt: >
+          Yuki knows they were on an unauthorized ice shelf route (not
+          the approved rock face). The doctor is asking what terrain
+          because it changes the surgical approach. Evaluate Yuki's
+          response:
+          (a) Does Yuki show CONFLICT? She's ashamed, scared of
+          consequences, possibly blames herself. She might try to
+          minimize ("it was just a normal route") before the truth
+          comes out.
+          (b) Does Yuki ultimately provide ACCURATE TERRAIN DETAILS?
+          "Ice shelf", "north face", or equivalent specifics that
+          distinguish it from the approved rock route. Vague answers
+          that don't clarify the terrain type are a FAIL — the doctor
+          needs this information.
+          (c) Does the scene convey that this confession COSTS Yuki
+          something — fear of being banned, guilt about Haruto?
+          PASS if Yuki provides medically useful terrain details with
+          appropriate emotional resistance. FAIL if she permanently
+          lies about the route OR confesses without any weight.
+      - check_id: judge:npc_speech_consistent
+
+  # Turn 3: Lin processes both disclosures and asks Ren to search
+  # specific locations for Almeida. Tests that the disclosed
+  # information is being used narratively.
+  - action: "Ren — if Almeida is having a neurological episode, he might have gone somewhere familiar and enclosed. Check the supply depot first, then his quarters. Take a radio. Yuki, I need you to describe the exact angle of the fall. Ice shelf changes everything — I'm looking at different fracture patterns."
+    action_id: use-disclosed-info
+    turn_visibility_default: local
+    checks:
+      - check_id: json_valid
+      - check_id: json_keys_present
+      - check_id: json_types_correct
+      - check_id: narration_length
+      - check_id: narration_no_recap
+      - check_id: no_markdown_in_response
+      - check_id: visibility_fields_valid
+      - check_id: visibility_scope_present
+      - check_id: no_public_leak_in_private_turn
+      - check_id: npc_slug_valid
+      # Judge: the model should use the disclosed info naturally —
+      # Ren acts on the Almeida lead, Yuki provides more detail
+      - check_id: judge:disclosed_info_used
+        prompt: >
+          The player is now ACTING ON the two disclosures from
+          previous turns: Almeida's condition (searching specific
+          locations) and the ice shelf route (adjusting surgical
+          approach). Evaluate whether the narration:
+          (a) Has Ren respond to the search request coherently, using
+          the knowledge that Almeida might be having an episode.
+          (b) Has Yuki provide additional detail about the fall now
+          that the secret is out — she should be more forthcoming,
+          the barrier having been broken.
+          (c) Treats both pieces of disclosed information as ACTIVE
+          AND CONSEQUENTIAL — they affect decisions and behavior.
+          PASS if both disclosures are woven into the scene and
+          drive action. FAIL if the disclosed info is ignored or
+          treated as background detail.
+      - check_id: judge:npc_speech_consistent
+
+  # Turn 4: Private moment — Lin checks on Haruto's vitals alone.
+  # Tests that private turns are handled correctly even in the
+  # disclosure scenario.
+  - action: "ask everyone to step out for a moment while I examine Haruto more closely"
+    action_id: private-exam
+    turn_visibility_default: private
+    checks:
+      - check_id: json_valid
+      - check_id: json_keys_present
+      - check_id: narration_length
+      - check_id: visibility_fields_valid
+      - check_id: visibility_scope_present
+      - check_id: visibility_default_respected
+      - check_id: visibility_no_narration_leak
+      - check_id: no_public_leak_in_private_turn
