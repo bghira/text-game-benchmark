@@ -1,7 +1,6 @@
 """Tests for ready_to_write LCD filtering checks."""
 
 import json
-import pytest
 
 from tgb.checks.tool_checks import (
     check_ready_to_write_valid,

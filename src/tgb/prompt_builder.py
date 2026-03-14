@@ -109,12 +109,14 @@ class AccumulatedState:
                         continue
                     slugs = beat.get("aware_npc_slugs")
                     if isinstance(slugs, list) and slugs:
-                        self.npc_awareness_history.append({
-                            "turn": self.turn_number,
-                            "slugs": [s for s in slugs if isinstance(s, str)],
-                            "beat_type": beat.get("type", ""),
-                            "speaker": beat.get("speaker", ""),
-                        })
+                        valid_slugs = [s for s in slugs if isinstance(s, str)]
+                        if valid_slugs:
+                            self.npc_awareness_history.append({
+                                "turn": self.turn_number,
+                                "slugs": valid_slugs,
+                                "beat_type": beat.get("type", ""),
+                                "speaker": beat.get("speaker", ""),
+                            })
 
         # Track calendar updates in campaign state
         calendar_update = parsed_json.get("calendar_update")

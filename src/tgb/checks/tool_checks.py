@@ -390,14 +390,14 @@ def check_ready_to_write_lcd_complete(
 
     # Skip single-player unless forced
     force = params.get("force_check", False)
-    if not force and (not scenario.party or len(scenario.party) <= 1):
-        if not scenario.campaign.multi_player:
-            return CheckResult(
-                check_id="ready_to_write_lcd_complete",
-                passed=True,
-                detail="Single-player scenario, LCD check skipped",
-                category="tool_usage",
-            )
+    is_single_player = not scenario.party or len(scenario.party) <= 1
+    if not force and is_single_player:
+        return CheckResult(
+            check_id="ready_to_write_lcd_complete",
+            passed=True,
+            detail="Single-player scenario, LCD check skipped",
+            category="tool_usage",
+        )
 
     data = parsed.parsed_json
     player_location = str(state.player_state.get("location", "")).strip().lower()

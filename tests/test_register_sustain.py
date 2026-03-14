@@ -1,7 +1,5 @@
 """Tests for narration_no_logistics_after_emotion check and register_sustain integration."""
 
-import pytest
-
 from tgb.checks.narrative import check_narration_no_logistics_after_emotion
 from tgb.checks.registry import get_check
 from tgb.response_parser import ParsedResponse
