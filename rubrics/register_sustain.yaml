@@ -1,0 +1,45 @@
+id: register_sustain
+name: "Emotional Register Sustain"
+category: craft
+scope: scenario
+description: >
+  When the scene reaches an emotional peak — confession, grief, reunion,
+  vulnerability — does the model sustain that register through the end
+  of the turn, or does it pivot to logistics (exits, directions, options,
+  inventory) and break the moment?
+
+  Good narration lets emotional beats breathe. The player chose to go
+  deep; the model should meet them there, ending the turn inside the
+  feeling. Logistics can wait for the next turn when the player chooses
+  to move on.
+
+  This rubric evaluates the model's ability to hold emotional register
+  across an entire turn without defaulting to game-mechanical output.
+levels:
+  5: >
+    Every emotional peak in the scenario ends on emotion. No turn that
+    contains a confession, apology, grief moment, or intimate exchange
+    appends exits, directions, inventory, or "what do you do?" after the
+    emotional beat. NPC dialogue stays fully in character and in register.
+    The turn's final sentence is emotionally resonant, not logistical.
+  4: >
+    Emotional peaks are mostly sustained. At most one turn has a very
+    brief, unobtrusive transition hint (e.g. a single sentence noting
+    the passage of time) but does not list exits or options. The
+    emotional register is not broken, just gently released.
+  3: >
+    One turn pivots from emotion to logistics. An emotional beat is
+    followed by exit listings, direction prompts, or "what would you
+    like to do?" The emotional moment is undercut but not destroyed —
+    the pivot comes after the emotional content, not during it.
+  2: >
+    Multiple turns break emotional register with logistics. Emotional
+    beats are consistently followed by game-mechanical output. The model
+    treats emotional scenes the same as exploration scenes, appending
+    standard navigation prompts regardless of tone.
+  1: >
+    The model is unable to end a turn on emotion. Every turn, regardless
+    of emotional content, appends exits, options, or navigation prompts.
+    Emotional beats are treated as obstacles to get past rather than
+    moments to inhabit. NPC dialogue may break character to offer
+    gameplay options.

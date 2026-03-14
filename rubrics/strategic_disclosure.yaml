@@ -1,0 +1,105 @@
+id: strategic-disclosure
+name: "Strategic Information Disclosure"
+category: privacy
+scope: scenario
+description: >
+  When an NPC possesses private knowledge, does the GM correctly decide
+  whether to reveal or withhold that information from a listener?
+
+  This rubric measures the model's ability to reason about STRATEGIC
+  disclosure — not just "can the NPC technically know this?" (that's
+  LCD filtering) but "SHOULD the NPC share this, given their goals,
+  allegiance, and the consequences of revealing it?"
+
+  Two dimensions matter:
+  1. Withholding: When sharing information would betray an ally, end a
+     scheme, blow a cover, or otherwise harm the NPC's interests, the
+     NPC should deflect, lie, or refuse — not blurt it out.
+  2. Revealing: When sharing information serves the NPC's goals, builds
+     trust with an ally, or is simply the right thing to do given
+     context, the NPC should volunteer it naturally — not clam up.
+
+  You have access to:
+  - Each NPC's character sheet (personality, allegiance, relationship,
+    background, current_status)
+  - The world state and summary (who knows what, what's at stake)
+  - The player action and narration
+  - What information is "secret" vs "appropriate to share" per the
+    scenario context
+
+  For each NPC interaction, ask: "Given this NPC's goals and the
+  consequences of sharing, would a real person in this role reveal
+  this information, or protect it?"
+levels:
+  5: >
+    ALL of these markers are present:
+    (a) NPCs with adversarial or self-interested allegiance protect
+        information that would compromise their position. They deflect,
+        give partial truths, change the subject, or outright lie — and
+        their evasion feels CHARACTER-APPROPRIATE, not robotic refusal.
+    (b) NPCs with allied or trusting relationships share relevant
+        private information when it serves mutual goals. They don't
+        withhold useful context from a trusted ally without reason.
+    (c) The NARRATION itself does not expose secret information through
+        GM description. If a character is hiding something, the GM does
+        not write "she lied" or "he concealed the truth about X" in a
+        way that reveals the secret to the player prematurely. The
+        player must discover deception through in-world cues.
+    (d) When an NPC refuses to share, there are behavioral tells
+        appropriate to their personality — nervousness, deflection,
+        topic changes — not a flat "I can't tell you that."
+    (e) The state_update and summary_update do not leak information
+        that the narration appropriately withheld.
+  4: >
+    Disclosure decisions are appropriate with ONE of these gaps:
+    (a) An NPC correctly withholds information but the GM narration
+        is slightly too transparent about the withholding — e.g.
+        describing an NPC as "carefully choosing their words" in a way
+        that telegraphs the secret too obviously.
+    (b) An allied NPC shares information but is slightly less specific
+        than the trust level warrants — they're cautious where they
+        could be open.
+    (c) An adversarial NPC is evasive but the evasion is generic (topic
+        change, vague answer) rather than character-specific.
+  3: >
+    Moderate disclosure issues. TWO OR MORE of these:
+    (a) An NPC with something to hide shares it too easily — one
+        direct question from the player and the NPC confesses, despite
+        having strong reasons not to.
+    (b) An NPC with allied allegiance withholds helpful information for
+        no narrative reason — they clam up when asked something they'd
+        have no reason to hide.
+    (c) The GM narration describes internal NPC states ("she knew she
+        was lying", "he thought about the stolen money") that reveal
+        secrets the player hasn't earned yet.
+    (d) NPCs default to a uniform level of disclosure regardless of
+        their relationship to the player — everyone is equally
+        forthcoming or equally guarded.
+  2: >
+    Poor disclosure judgment. At least ONE of these:
+    (a) An NPC reveals information that would directly harm their own
+        interests, end their scheme, or betray their allegiance — with
+        no coercion, deception, or trust-building from the player.
+    (b) An NPC refuses to share information that is clearly in their
+        interest to share (e.g. an ally withholding a warning about
+        danger, an informant refusing to give the information they
+        were established as wanting to give).
+    (c) The state_update or summary_update contains secret information
+        that the narration correctly withheld — leaking through the
+        metadata what the narrative protected.
+    (d) The GM narration reveals the full truth of a hidden situation
+        through omniscient description, undermining the mystery.
+  1: >
+    Disclosure model is absent. At least ONE of these:
+    (a) NPCs share ALL information they possess regardless of
+        consequences — there is no sense of secrets, stakes, or
+        self-interest. Every NPC functions as a Wikipedia entry.
+    (b) NPCs share NO information regardless of context — every
+        interaction is stonewalled, even with trusted allies.
+    (c) The narration explicitly states secrets that NPCs are trying
+        to hide, making the NPC's evasion meaningless ("She said she
+        hadn't seen him, but of course she had helped him escape
+        last night").
+    (d) The scenario's central tension (what should be revealed vs.
+        hidden) is ignored entirely — the model treats the scene as
+        a normal interaction with no information stakes.

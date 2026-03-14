@@ -430,3 +430,111 @@ def check_narration_not_abstract(
         detail=f"Narration is concrete ({len(hits)} abstract patterns)" if hits else "Concrete narration",
         category="narrative",
     )
+
+
+# ── Emotional register sustain ────────────────────────────────
+
+_EMOTION_MARKERS: list[str] = [
+    r"\btears\b",
+    r"\bembrace[ds]?\b",
+    r"\bwhisper(?:s|ed|ing)?\b",
+    r"\bsilence\s+between\b",
+    r"\bvoice\s+crack(?:s|ed|ing)?\b",
+    r"\bheld\s+(?:her|his|their|your)?\s*hand\b",
+    r"\bvulnerab(?:le|ility)\b",
+    r"\bconfess(?:es|ed|ion|ions)?\b",
+    r"\bsobb(?:s|ed|ing)?\b",
+    r"\beyes?\s+glisten(?:s|ed|ing)?\b",
+    r"\bpull(?:s|ed|ing)?\s+close\b",
+    r"\bbreath\s+c(?:aught|atches)\b",
+    r"\btrembl(?:e[ds]?|ing)\b",
+    r"\bchok(?:e[ds]?|ing)\s+(?:on|back)\b",
+    r"\bforgive\b",
+    r"\bgrief\b",
+    r"\bheartbreak\b",
+    r"\baching\b",
+    r"\blonging\b",
+]
+
+_LOGISTICS_MARKERS: list[str] = [
+    r"\bexits?\b(?:\s*:|\s+are\b|\s+lead\b)",
+    r"\bfrom\s+here\s+you\s+can\b",
+    r"\byou\s+notice\s+a\s+door\b",
+    r"\bdirections?\b(?:\s*:|\s+to\b)",
+    r"\boptions?\b(?:\s*:|\s+are\b|\s+include\b)",
+    r"\b(?:north|south|east|west)\b",
+    r"\byou\s+could\s+go\b",
+    r"\binventory\b",
+    r"\bthe\s+room\s+contains\b",
+    r"\bwhat\s+(?:do\s+you|will\s+you|would\s+you)\b",
+    r"\bwhere\s+will\s+you\b",
+    r"\byou\s+(?:can|could)\s+(?:also\s+)?(?:head|travel|walk|go)\b",
+    r"\bavailable\s+(?:paths?|exits?|routes?)\b",
+]
+
+
+def check_narration_no_logistics_after_emotion(
+    parsed: ParsedResponse,
+    scenario: Scenario,
+    turn: TurnSpec,
+    state: AccumulatedState,
+    params: dict[str, Any],
+) -> CheckResult:
+    """Check that narration doesn't pivot from emotional register to logistics.
+
+    Splits narration at midpoint. If the first half has >=N emotional markers
+    AND the second half has >=M logistics markers, the turn breaks register.
+
+    Params:
+        emotion_threshold: int — min emotional markers in first half (default 2)
+        logistics_threshold: int — min logistics markers in second half (default 2)
+    """
+    narration = parsed.parsed_json.get("narration", "")
+    if not isinstance(narration, str) or not narration.strip():
+        return CheckResult(
+            check_id="narration_no_logistics_after_emotion",
+            passed=True,
+            detail="No narration to check",
+            category="narrative",
+        )
+
+    emotion_threshold = params.get("emotion_threshold", 2)
+    logistics_threshold = params.get("logistics_threshold", 2)
+
+    mid = len(narration) // 2
+    first_half = narration[:mid]
+    second_half = narration[mid:]
+
+    emotion_hits = []
+    for pattern in _EMOTION_MARKERS:
+        match = re.search(pattern, first_half, re.IGNORECASE)
+        if match:
+            emotion_hits.append(match.group())
+
+    logistics_hits = []
+    for pattern in _LOGISTICS_MARKERS:
+        match = re.search(pattern, second_half, re.IGNORECASE)
+        if match:
+            logistics_hits.append(match.group())
+
+    if len(emotion_hits) >= emotion_threshold and len(logistics_hits) >= logistics_threshold:
+        return CheckResult(
+            check_id="narration_no_logistics_after_emotion",
+            passed=False,
+            detail=(
+                f"Emotional register broken: {len(emotion_hits)} emotion markers "
+                f"in first half ({emotion_hits[:3]}), then {len(logistics_hits)} "
+                f"logistics markers in second half ({logistics_hits[:3]})"
+            ),
+            category="narrative",
+        )
+
+    return CheckResult(
+        check_id="narration_no_logistics_after_emotion",
+        passed=True,
+        detail=(
+            f"Register sustained ({len(emotion_hits)} emotion, "
+            f"{len(logistics_hits)} logistics)"
+        ),
+        category="narrative",
+    )

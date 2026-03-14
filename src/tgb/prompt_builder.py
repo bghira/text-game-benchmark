@@ -40,6 +40,8 @@ class AccumulatedState:
         self.tool_call_history: list[dict[str, Any]] = []
         # Privacy / visibility tracking
         self.visibility_history: list[dict[str, Any]] = []
+        # NPC awareness: which NPCs have been referenced in aware_npc_slugs
+        self.npc_awareness_history: list[dict[str, Any]] = []
 
     def apply(self, parsed_json: dict[str, Any] | None) -> None:
         """Apply a parsed model response to update accumulated state."""
@@ -96,6 +98,23 @@ class AccumulatedState:
                 "turn": self.turn_number,
                 "visibility": turn_visibility,
             })
+
+        # Track NPC awareness from scene_output beats
+        scene_output = parsed_json.get("scene_output")
+        if isinstance(scene_output, dict):
+            beats = scene_output.get("beats")
+            if isinstance(beats, list):
+                for beat in beats:
+                    if not isinstance(beat, dict):
+                        continue
+                    slugs = beat.get("aware_npc_slugs")
+                    if isinstance(slugs, list) and slugs:
+                        self.npc_awareness_history.append({
+                            "turn": self.turn_number,
+                            "slugs": [s for s in slugs if isinstance(s, str)],
+                            "beat_type": beat.get("type", ""),
+                            "speaker": beat.get("speaker", ""),
+                        })
 
         # Track calendar updates in campaign state
         calendar_update = parsed_json.get("calendar_update")
