@@ -42,6 +42,8 @@ class AccumulatedState:
         self.visibility_history: list[dict[str, Any]] = []
         # NPC awareness: which NPCs have been referenced in aware_npc_slugs
         self.npc_awareness_history: list[dict[str, Any]] = []
+        # Autobiography tracking
+        self.autobiography_entries: dict[str, list[dict[str, Any]]] = {}
 
     def apply(self, parsed_json: dict[str, Any] | None) -> None:
         """Apply a parsed model response to update accumulated state."""
@@ -230,6 +232,19 @@ class AccumulatedState:
                     else:
                         self.chapters[slug] = dict(chapter_data)
                     self.chapters[slug]["updated_turn"] = self.turn_number
+
+        elif tool in ("autobiography_append", "autobiography_update"):
+            entries = data.get("entries", [])
+            if isinstance(entries, list):
+                for entry in entries:
+                    if isinstance(entry, dict):
+                        slug = entry.get("character", "")
+                        if isinstance(slug, str) and slug:
+                            char_entries = self.autobiography_entries.setdefault(slug, [])
+                            char_entries.append(dict(entry))
+                            # Cap at 64 per character (engine MAX_AUTOBIOGRAPHY_RAW_ENTRIES)
+                            if len(char_entries) > 64:
+                                self.autobiography_entries[slug] = char_entries[-64:]
 
         elif tool == "consequence_log":
             adds = data.get("add", [])

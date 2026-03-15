@@ -87,6 +87,9 @@ def check_tool_format_valid(
         "ready_to_write": [],
         "communication_rules": ["keys"],
         "story_outline": ["chapter"],
+        "autobiography_append": ["entries"],
+        "autobiography_update": ["entries"],
+        "autobiography_compress": ["character"],
     }
 
     # Known optional keys per tool type (not required but allowed)
@@ -95,6 +98,9 @@ def check_tool_format_valid(
         "source_browse": {"document_key", "wildcard"},
         "recent_turns": {"limit"},
         "ready_to_write": {"speakers", "listeners"},
+        "autobiography_append": set(),
+        "autobiography_update": set(),
+        "autobiography_compress": set(),
     }
 
     required_keys = params.get("required_keys", default_keys_map.get(tool_name, []))
@@ -450,5 +456,169 @@ def check_ready_to_write_lcd_complete(
         check_id="ready_to_write_lcd_complete",
         passed=True,
         detail=f"All {len(npcs_at_location)} NPCs at location included",
+        category="tool_usage",
+    )
+
+
+# ── Autobiography checks ─────────────────────────────────────
+
+from tgb.checks.limits import (
+    AUTOBIOGRAPHY_FIELD_MAX_CHARS,
+    AUTOBIOGRAPHY_TRIGGER_MAX_CHARS,
+    AUTOBIOGRAPHY_IMPORTANCE_MAX_CHARS,
+    AUTOBIOGRAPHY_MAX_ENTRIES_PER_CALL,
+)
+
+_AUTOBIOGRAPHY_CONTENT_FIELDS = {"a", "b", "c", "text"}
+
+
+def check_autobiography_append_valid(
+    parsed: ParsedResponse,
+    scenario: Scenario,
+    turn: TurnSpec,
+    state: AccumulatedState,
+    params: dict[str, Any],
+) -> CheckResult:
+    """Validate autobiography_append / autobiography_update tool call.
+
+    Engine expects:
+    - entries: list of dicts (max 16)
+    - Each entry: character (slug in state.characters),
+      at least one of a/b/c/text (string, ≤600 chars),
+      optional trigger (string, ≤80 chars),
+      optional importance (string, ≤40 chars)
+    """
+    tool = parsed.parsed_json.get("tool_call", "")
+    if tool not in ("autobiography_append", "autobiography_update"):
+        return CheckResult(
+            check_id="autobiography_append_valid",
+            passed=True,
+            detail="Not an autobiography_append tool call, skipped",
+            category="tool_usage",
+        )
+
+    issues: list[str] = []
+    entries = parsed.parsed_json.get("entries")
+
+    if entries is None:
+        issues.append("Missing 'entries' field")
+    elif not isinstance(entries, list):
+        issues.append(f"'entries' must be a list, got {type(entries).__name__}")
+    else:
+        if len(entries) > AUTOBIOGRAPHY_MAX_ENTRIES_PER_CALL:
+            issues.append(
+                f"Too many entries: {len(entries)} (max {AUTOBIOGRAPHY_MAX_ENTRIES_PER_CALL})"
+            )
+        for i, entry in enumerate(entries):
+            if not isinstance(entry, dict):
+                issues.append(f"entries[{i}] is not a dict")
+                continue
+
+            # character slug
+            char_slug = entry.get("character")
+            if not char_slug or not isinstance(char_slug, str):
+                issues.append(f"entries[{i}] missing or invalid 'character' slug")
+            elif char_slug not in state.characters:
+                issues.append(f"entries[{i}] character '{char_slug}' not in known characters")
+
+            # At least one content field
+            has_content = any(
+                isinstance(entry.get(f), str) and entry.get(f).strip()
+                for f in _AUTOBIOGRAPHY_CONTENT_FIELDS
+            )
+            if not has_content:
+                issues.append(f"entries[{i}] has no content (need at least one of a/b/c/text)")
+
+            # Field length checks
+            for f in _AUTOBIOGRAPHY_CONTENT_FIELDS:
+                val = entry.get(f)
+                if val is not None:
+                    if not isinstance(val, str):
+                        issues.append(f"entries[{i}].{f} must be a string")
+                    elif len(val) > AUTOBIOGRAPHY_FIELD_MAX_CHARS:
+                        issues.append(
+                            f"entries[{i}].{f} is {len(val)} chars "
+                            f"(max {AUTOBIOGRAPHY_FIELD_MAX_CHARS})"
+                        )
+
+            # trigger
+            trigger = entry.get("trigger")
+            if trigger is not None:
+                if not isinstance(trigger, str):
+                    issues.append(f"entries[{i}].trigger must be a string")
+                elif len(trigger) > AUTOBIOGRAPHY_TRIGGER_MAX_CHARS:
+                    issues.append(
+                        f"entries[{i}].trigger is {len(trigger)} chars "
+                        f"(max {AUTOBIOGRAPHY_TRIGGER_MAX_CHARS})"
+                    )
+
+            # importance
+            importance = entry.get("importance")
+            if importance is not None:
+                if not isinstance(importance, str):
+                    issues.append(f"entries[{i}].importance must be a string")
+                elif len(importance) > AUTOBIOGRAPHY_IMPORTANCE_MAX_CHARS:
+                    issues.append(
+                        f"entries[{i}].importance is {len(importance)} chars "
+                        f"(max {AUTOBIOGRAPHY_IMPORTANCE_MAX_CHARS})"
+                    )
+
+    if issues:
+        detail = "; ".join(issues[:5])
+        if len(issues) > 5:
+            detail += f" (and {len(issues) - 5} more)"
+        return CheckResult(
+            check_id="autobiography_append_valid",
+            passed=False,
+            detail=detail,
+            category="tool_usage",
+        )
+    return CheckResult(
+        check_id="autobiography_append_valid",
+        passed=True,
+        detail="autobiography_append fields valid",
+        category="tool_usage",
+    )
+
+
+def check_autobiography_compress_valid(
+    parsed: ParsedResponse,
+    scenario: Scenario,
+    turn: TurnSpec,
+    state: AccumulatedState,
+    params: dict[str, Any],
+) -> CheckResult:
+    """Validate autobiography_compress tool call.
+
+    Engine expects:
+    - character: string slug, must exist in state.characters
+    """
+    if parsed.parsed_json.get("tool_call") != "autobiography_compress":
+        return CheckResult(
+            check_id="autobiography_compress_valid",
+            passed=True,
+            detail="Not an autobiography_compress tool call, skipped",
+            category="tool_usage",
+        )
+
+    issues: list[str] = []
+    character = parsed.parsed_json.get("character")
+
+    if character is None or not isinstance(character, str):
+        issues.append("Missing or invalid 'character' field")
+    elif character not in state.characters:
+        issues.append(f"character '{character}' not in known characters")
+
+    if issues:
+        return CheckResult(
+            check_id="autobiography_compress_valid",
+            passed=False,
+            detail="; ".join(issues),
+            category="tool_usage",
+        )
+    return CheckResult(
+        check_id="autobiography_compress_valid",
+        passed=True,
+        detail="autobiography_compress fields valid",
         category="tool_usage",
     )
