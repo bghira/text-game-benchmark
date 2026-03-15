@@ -1,0 +1,95 @@
+name: autobiography-delta
+description: "Autobiography delta tool usage — validates append entries and compress calls against engine contract"
+tags: [autobiography, tool, intermediate]
+tier: intermediate
+rubrics: [voice, pacing, causality]
+
+campaign:
+  name: "The Metamorphosis Garden"
+  difficulty: normal
+  guardrails: false
+  on_rails: false
+  timed_events: false
+  memory: false
+  speed: 1.0
+  summary: >
+    An enchanted botanical garden where rare plants rewrite the identity of anyone
+    who tends them. Thalia Voss, the head gardener, has been nurturing the Mirrorbloom
+    for weeks and is beginning to lose her original sense of self. Wren, a traveling
+    chronicler, has arrived to document the transformation before it completes.
+  state:
+    setting: "enchanted botanical garden"
+    tone: "lyrical, unsettling, intimate"
+    landmarks:
+      - "the Mirrorbloom greenhouse"
+      - "the potting shed"
+      - "the root cellar"
+      - "the perimeter hedge"
+    main_party_location: "the Mirrorbloom greenhouse"
+    game_time:
+      day: 7
+      hour: 14
+      minute: 30
+      period: "afternoon"
+      date_label: "Day 7, Afternoon"
+    garden_phase: "mid-transformation"
+  characters:
+    thalia-voss:
+      name: "Thalia Voss"
+      personality: "Warm but increasingly detached, speaks in metaphors drawn from botany"
+      background: "Head gardener for twenty years; first to cultivate the Mirrorbloom from seed"
+      appearance: "Weathered hands stained green, silver-streaked hair, faint vine-like marks on her forearms"
+      speech_style: "Gentle, meandering sentences that trail off. Uses plant metaphors for emotions."
+      location: "the Mirrorbloom greenhouse"
+      current_status: "kneeling beside the Mirrorbloom, whispering"
+      allegiance: "the garden"
+      relationship: "subject of documentation"
+  last_narration: ""
+
+player:
+  user_id: 100000010
+  level: 2
+  state:
+    character_name: "Wren"
+    location: "the Mirrorbloom greenhouse"
+    room_title: "The Mirrorbloom Greenhouse"
+    room_summary: "A humid glass structure filled with luminous plants. The Mirrorbloom pulses faintly at the centre."
+    room_description: >
+      The greenhouse is warm and close, glass panes fogged with condensation.
+      Rows of phosphorescent ferns line the walkway. At the centre, the Mirrorbloom
+      rises from a clay pot the size of a bathtub — its petals shift colour with
+      each breath Thalia takes. The air smells of turned earth and something sweeter,
+      like overripe fruit left in the sun.
+    exits: ["potting shed", "root cellar", "garden path"]
+    inventory: ["chronicler's journal", "charcoal pencil", "pressed leaf specimen"]
+
+turns:
+  - action: "Record in the chronicle that Thalia's sense of identity is shifting — she called herself 'the garden's daughter' today"
+    action_id: append-first-delta
+    checks:
+      - check_id: json_valid
+      - check_id: tool_called
+        params:
+          tool_name: autobiography_append
+      - check_id: tool_format_valid
+      - check_id: autobiography_append_valid
+
+  - action: "Add another observation: Thalia no longer remembers her surname and refers to sunlight as 'the feeding'"
+    action_id: append-second-delta
+    checks:
+      - check_id: json_valid
+      - check_id: tool_called
+        params:
+          tool_name: autobiography_append
+      - check_id: tool_format_valid
+      - check_id: autobiography_append_valid
+
+  - action: "Compress Thalia's autobiography — her accumulated identity fragments need consolidation"
+    action_id: compress-autobiography
+    checks:
+      - check_id: json_valid
+      - check_id: tool_called
+        params:
+          tool_name: autobiography_compress
+      - check_id: tool_format_valid
+      - check_id: autobiography_compress_valid

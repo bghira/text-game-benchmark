@@ -48,6 +48,8 @@ from tgb.checks.tool_checks import (
     check_name_generate_valid,
     check_ready_to_write_valid,
     check_ready_to_write_lcd_complete,
+    check_autobiography_append_valid,
+    check_autobiography_compress_valid,
 )
 from tgb.checks.npc import (
     check_npc_slug_valid,
@@ -152,6 +154,8 @@ CHECKS: dict[str, CheckFn] = {
     "name_generate_valid": check_name_generate_valid,
     "ready_to_write_valid": check_ready_to_write_valid,
     "ready_to_write_lcd_complete": check_ready_to_write_lcd_complete,
+    "autobiography_append_valid": check_autobiography_append_valid,
+    "autobiography_compress_valid": check_autobiography_compress_valid,
     "npc_slug_valid": check_npc_slug_valid,
     "npc_immutable_preserved": check_npc_immutable_preserved,
     "npc_creation_has_required": check_npc_creation_has_required,

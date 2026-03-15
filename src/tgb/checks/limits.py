@@ -47,3 +47,10 @@ TIMER_DELAY_MAX = 300
 # ── Inventory ──────────────────────────────────────────────────
 
 MAX_INVENTORY_CHANGES_PER_TURN = 10
+
+# ── Autobiography ──────────────────────────────────────────────
+
+AUTOBIOGRAPHY_FIELD_MAX_CHARS = 600       # a, b, c, text fields
+AUTOBIOGRAPHY_TRIGGER_MAX_CHARS = 80
+AUTOBIOGRAPHY_IMPORTANCE_MAX_CHARS = 40
+AUTOBIOGRAPHY_MAX_ENTRIES_PER_CALL = 16
