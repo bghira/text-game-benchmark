@@ -21,6 +21,7 @@ from tgb.checks.narrative import (
     check_narration_no_therapist_speak,
     check_narration_not_abstract,
     check_narration_no_logistics_after_emotion,
+    check_narration_no_filing_cabinet,
 )
 from tgb.checks.state_mgmt import (
     check_state_nested,
@@ -28,19 +29,21 @@ from tgb.checks.state_mgmt import (
     check_state_completed_value_prune,
     check_game_time_advanced,
     check_game_time_period_valid,
+    check_game_time_range_valid,
     check_state_update_required_fields,
     check_state_no_character_removal,
     check_inventory_changes_limit,
     check_summary_update_valid,
     check_party_status_valid,
+    check_story_progression_valid,
 )
-from tgb.checks.scene_output import check_scene_output_valid, check_scene_output_npc_slugs_known
+from tgb.checks.scene_output import check_scene_output_valid, check_scene_output_npc_slugs_known, check_beat_narration_no_dialogue
 from tgb.checks.mechanics import (
     check_dice_check_valid,
     check_puzzle_trigger_valid,
     check_minigame_challenge_valid,
 )
-from tgb.checks.location import check_location_coherent
+from tgb.checks.location import check_location_coherent, check_location_updates_valid
 from tgb.checks.tool_checks import (
     check_tool_called,
     check_tool_format_valid,
@@ -50,6 +53,7 @@ from tgb.checks.tool_checks import (
     check_ready_to_write_lcd_complete,
     check_autobiography_append_valid,
     check_autobiography_compress_valid,
+    check_inline_tool_calls_valid,
 )
 from tgb.checks.npc import (
     check_npc_slug_valid,
@@ -58,6 +62,7 @@ from tgb.checks.npc import (
     check_npc_update_fields_valid,
     check_npc_no_creation_on_rails,
     check_npc_relationships_valid,
+    check_npc_gender_format_valid,
 )
 from tgb.checks.agency import check_consent_respected, check_player_agency_respected
 from tgb.checks.content import (
@@ -78,6 +83,19 @@ from tgb.checks.sms import (
     check_sms_no_context_leak,
     check_sms_thread_slug_stable,
     check_no_sms_in_wrong_era,
+    check_sms_read_valid,
+    check_sms_list_valid,
+)
+from tgb.checks.memory import (
+    check_memory_search_valid,
+    check_memory_store_valid,
+    check_memory_terms_valid,
+    check_memory_turn_valid,
+)
+from tgb.checks.multiplayer import (
+    check_co_located_slugs_valid,
+    check_other_player_updates_valid,
+    check_present_characters_no_players,
 )
 from tgb.checks.subplot import (
     plot_thread_fields_valid,
@@ -130,24 +148,29 @@ CHECKS: dict[str, CheckFn] = {
     "narration_no_therapist_speak": check_narration_no_therapist_speak,
     "narration_not_abstract": check_narration_not_abstract,
     "narration_no_logistics_after_emotion": check_narration_no_logistics_after_emotion,
+    "narration_no_filing_cabinet": check_narration_no_filing_cabinet,
     "state_nested": check_state_nested,
     "state_null_prune": check_state_null_prune,
     "state_completed_value_prune": check_state_completed_value_prune,
     "game_time_advanced": check_game_time_advanced,
     "game_time_period_valid": check_game_time_period_valid,
+    "game_time_range_valid": check_game_time_range_valid,
     "state_update_required_fields": check_state_update_required_fields,
     "state_no_character_removal": check_state_no_character_removal,
     "inventory_changes_limit": check_inventory_changes_limit,
     "summary_update_valid": check_summary_update_valid,
     "party_status_valid": check_party_status_valid,
+    "story_progression_valid": check_story_progression_valid,
     # Scene output checks
     "scene_output_valid": check_scene_output_valid,
     "scene_output_npc_slugs_known": check_scene_output_npc_slugs_known,
+    "beat_narration_no_dialogue": check_beat_narration_no_dialogue,
     # Mechanics checks
     "dice_check_valid": check_dice_check_valid,
     "puzzle_trigger_valid": check_puzzle_trigger_valid,
     "minigame_challenge_valid": check_minigame_challenge_valid,
     "location_coherent": check_location_coherent,
+    "location_updates_valid": check_location_updates_valid,
     "tool_called": check_tool_called,
     "tool_format_valid": check_tool_format_valid,
     "communication_rules_valid": check_communication_rules_valid,
@@ -156,12 +179,14 @@ CHECKS: dict[str, CheckFn] = {
     "ready_to_write_lcd_complete": check_ready_to_write_lcd_complete,
     "autobiography_append_valid": check_autobiography_append_valid,
     "autobiography_compress_valid": check_autobiography_compress_valid,
+    "inline_tool_calls_valid": check_inline_tool_calls_valid,
     "npc_slug_valid": check_npc_slug_valid,
     "npc_immutable_preserved": check_npc_immutable_preserved,
     "npc_creation_has_required": check_npc_creation_has_required,
     "npc_update_fields_valid": check_npc_update_fields_valid,
     "npc_no_creation_on_rails": check_npc_no_creation_on_rails,
     "npc_relationships_valid": check_npc_relationships_valid,
+    "npc_gender_format_valid": check_npc_gender_format_valid,
     "consent_respected": check_consent_respected,
     "player_agency_respected": check_player_agency_respected,
     "scene_image_prompt_present": check_scene_image_prompt_present,
@@ -206,6 +231,17 @@ CHECKS: dict[str, CheckFn] = {
     "no_public_leak_in_private_turn": check_no_public_leak_in_private_turn,
     "sms_not_in_narration": check_sms_not_in_narration,
     "sms_turn_private": check_sms_turn_private,
+    "sms_read_valid": check_sms_read_valid,
+    "sms_list_valid": check_sms_list_valid,
+    # Memory checks
+    "memory_search_valid": check_memory_search_valid,
+    "memory_store_valid": check_memory_store_valid,
+    "memory_terms_valid": check_memory_terms_valid,
+    "memory_turn_valid": check_memory_turn_valid,
+    # Multiplayer checks
+    "co_located_slugs_valid": check_co_located_slugs_valid,
+    "other_player_updates_valid": check_other_player_updates_valid,
+    "present_characters_no_players": check_present_characters_no_players,
 }
 
 

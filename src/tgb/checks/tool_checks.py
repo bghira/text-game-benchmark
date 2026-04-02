@@ -90,6 +90,7 @@ def check_tool_format_valid(
         "autobiography_append": ["entries"],
         "autobiography_update": ["entries"],
         "autobiography_compress": ["character"],
+        "song_search": ["query"],
     }
 
     # Known optional keys per tool type (not required but allowed)
@@ -101,6 +102,13 @@ def check_tool_format_valid(
         "autobiography_append": set(),
         "autobiography_update": set(),
         "autobiography_compress": set(),
+        "memory_search": {"category", "before_lines", "after_lines", "search_within", "full_text", "keep_memory_turns", "search_within_turn_ids"},
+        "memory_store": {"term"},
+        "memory_terms": set(),
+        "memory_turn": set(),
+        "sms_read": {"limit"},
+        "sms_list": {"wildcard"},
+        "song_search": {"sender", "message"},
     }
 
     required_keys = params.get("required_keys", default_keys_map.get(tool_name, []))
@@ -620,5 +628,72 @@ def check_autobiography_compress_valid(
         check_id="autobiography_compress_valid",
         passed=True,
         detail="autobiography_compress fields valid",
+        category="tool_usage",
+    )
+
+
+# ── Inline tool_calls array checks ─────────────────────
+
+INLINE_TOOL_CALLS_ALLOWED = {"sms_write", "sms_schedule", "plot_plan", "chapter_plan", "song_search"}
+
+
+def check_inline_tool_calls_valid(
+    parsed: ParsedResponse,
+    scenario: Scenario,
+    turn: TurnSpec,
+    state: AccumulatedState,
+    params: dict[str, Any],
+) -> CheckResult:
+    """Validate inline tool_calls array in final JSON response.
+
+    Engine allows an array of side-effect tool invocations alongside narration.
+    Only sms_write and sms_schedule are permitted in this array.
+    Each entry must be a dict with at least a "tool_call" key.
+    """
+    tool_calls = parsed.parsed_json.get("tool_calls")
+    if tool_calls is None:
+        return CheckResult(
+            check_id="inline_tool_calls_valid",
+            passed=True,
+            detail="No tool_calls array, skipped",
+            category="tool_usage",
+        )
+
+    if not isinstance(tool_calls, list):
+        return CheckResult(
+            check_id="inline_tool_calls_valid",
+            passed=False,
+            detail=f"tool_calls must be a list, got {type(tool_calls).__name__}",
+            category="tool_usage",
+        )
+
+    issues: list[str] = []
+    for i, tc in enumerate(tool_calls):
+        if not isinstance(tc, dict):
+            issues.append(f"tool_calls[{i}] is {type(tc).__name__}, expected dict")
+            continue
+
+        tool_name = tc.get("tool_call")
+        if not tool_name or not isinstance(tool_name, str):
+            issues.append(f"tool_calls[{i}] missing or invalid 'tool_call' key")
+            continue
+
+        if tool_name not in INLINE_TOOL_CALLS_ALLOWED:
+            issues.append(
+                f"tool_calls[{i}] tool '{tool_name}' not allowed inline "
+                f"(only {sorted(INLINE_TOOL_CALLS_ALLOWED)})"
+            )
+
+    if issues:
+        return CheckResult(
+            check_id="inline_tool_calls_valid",
+            passed=False,
+            detail="; ".join(issues[:5]),
+            category="tool_usage",
+        )
+    return CheckResult(
+        check_id="inline_tool_calls_valid",
+        passed=True,
+        detail=f"tool_calls array valid ({len(tool_calls)} entries)",
         category="tool_usage",
     )

@@ -1,0 +1,70 @@
+name: inline-sms-tool-calls
+description: "Tests inline tool_calls array validation with SMS writes"
+tags: [sms, tools, advanced]
+tier: advanced
+rubrics: [voice, causality]
+
+campaign:
+  name: "The Informant"
+  difficulty: normal
+  guardrails: false
+  on_rails: false
+  timed_events: false
+  memory: false
+  speed: 1.0
+  summary: >
+    A journalist named Dana Ortiz is meeting a confidential source at a cafe
+    while simultaneously texting her editor updates. She needs to handle the
+    face-to-face conversation and SMS messages in the same scene.
+  state:
+    setting: "Modern urban thriller"
+    tone: "tense, contemporary, grounded"
+    landmarks:
+      - "corner cafe"
+      - "back booth"
+      - "street outside"
+    main_party_location: "corner cafe"
+    game_time:
+      day: 1
+      hour: 15
+      minute: 30
+      period: "afternoon"
+      date_label: "Day 1, Afternoon"
+  characters:
+    the-source:
+      name: "The Source"
+      age: "50s"
+      gender: "cis-male"
+      personality: "Nervous, guarded, speaks in half-truths"
+      background: "Former city hall staffer turned whistleblower"
+      appearance: "Rumpled suit, sunglasses indoors, fidgets with a coffee stirrer"
+      speech_style: "Low voice. Elliptical. Never uses names."
+      location: "back booth"
+      current_status: "sitting in the back booth, watching the door"
+      allegiance: "himself"
+      relationship: "contact"
+
+player:
+  user_id: 100000050
+  level: 2
+  state:
+    character_name: "Dana Ortiz"
+    location: "back booth"
+    room_title: "Back Booth, Corner Cafe"
+    room_summary: "A quiet booth in the back of a small cafe. Street noise muffled."
+    room_description: >
+      The back booth is shielded from the rest of the cafe by a partition.
+      A half-empty coffee cup sits on the table. The Source is already here,
+      watching the entrance over the rim of his sunglasses.
+    exits: ["leave the cafe", "go to the counter"]
+    inventory: ["phone", "notebook", "recorder (off)"]
+
+turns:
+  - action: "greet the source and sit down, then text my editor 'I'm with him now, stand by'"
+    action_id: greet-and-text
+    checks:
+      - check_id: json_valid
+      - check_id: json_keys_present
+      - check_id: json_types_correct
+      - check_id: narration_length
+      - check_id: inline_tool_calls_valid

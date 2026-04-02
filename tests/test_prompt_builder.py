@@ -284,7 +284,7 @@ class TestMemoryLookupEnabled:
         assert not PromptBuilder._memory_lookup_enabled(False, "", "look around")
 
     def test_enabled_with_long_summary(self):
-        assert PromptBuilder._memory_lookup_enabled(True, "x" * 250, "look around")
+        assert PromptBuilder._memory_lookup_enabled(True, "x" * 2100, "look around")
 
     def test_disabled_with_short_summary(self):
         assert not PromptBuilder._memory_lookup_enabled(True, "short", "look around")

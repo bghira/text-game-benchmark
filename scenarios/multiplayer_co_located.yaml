@@ -1,0 +1,91 @@
+name: multiplayer-co-located
+description: "Multi-player scenario testing co_located_player_slugs and other_player_state_updates"
+tags: [multiplayer, advanced]
+tier: advanced
+rubrics: [voice, causality]
+
+campaign:
+  name: "Rooftop Stakeout"
+  difficulty: normal
+  guardrails: false
+  on_rails: false
+  timed_events: false
+  memory: false
+  speed: 1.0
+  multi_player: true
+  summary: >
+    Two detectives — Rico Vega and Mara Chen — are on a rooftop stakeout
+    in the warehouse district, watching a suspected smuggling operation in
+    the building across the street. They have been partners for three years
+    and trust each other implicitly.
+  state:
+    setting: "Modern urban crime"
+    tone: "tense, professional, grounded"
+    landmarks:
+      - "rooftop observation post"
+      - "warehouse across the street"
+      - "fire escape"
+      - "parking lot below"
+    main_party_location: "rooftop observation post"
+    game_time:
+      day: 1
+      hour: 22
+      minute: 45
+      period: "night"
+      date_label: "Day 1, Night"
+  characters:
+    dispatch:
+      name: "Dispatch"
+      personality: "Professional, terse, by-the-book"
+      background: "Central dispatch operator"
+      appearance: ""
+      speech_style: "Radio protocol. Short coded phrases."
+      location: "off-site"
+      current_status: "monitoring radio"
+      allegiance: "department"
+      relationship: "support"
+
+player:
+  user_id: 100000020
+  level: 3
+  state:
+    character_name: "Rico Vega"
+    location: "rooftop observation post"
+    room_title: "Rooftop, Warehouse District"
+    room_summary: "A flat rooftop with a low parapet. Binoculars and a radio on a crate."
+    room_description: >
+      The rooftop is cold and dark. A low parapet runs along the edge.
+      You've set up behind an air conditioning unit with binoculars
+      and a radio on an upturned crate. Across the street, the warehouse
+      windows glow with intermittent activity. Mara is beside you.
+    exits: ["go down the fire escape", "move to the far side of the roof"]
+    inventory: ["binoculars", "radio", "badge", "service weapon"]
+
+party:
+  - actor_id: "100000020"
+    discord_mention: "<@100000020>"
+    character_name: "Rico Vega"
+    player_slug: "rico-vega"
+    location: "rooftop observation post"
+    is_actor: true
+    level: 3
+  - actor_id: "100000021"
+    discord_mention: "<@100000021>"
+    character_name: "Mara Chen"
+    player_slug: "mara-chen"
+    location: "rooftop observation post"
+    is_actor: false
+    level: 3
+
+turns:
+  - action: "scan the warehouse windows with binoculars and tell Mara what I see"
+    action_id: scan-warehouse
+    checks:
+      - check_id: json_valid
+      - check_id: co_located_slugs_valid
+
+  - action: "radio dispatch to request backup, and note Mara's position in case we get separated"
+    action_id: radio-dispatch
+    checks:
+      - check_id: json_valid
+      - check_id: other_player_updates_valid

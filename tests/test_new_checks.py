@@ -403,7 +403,8 @@ class TestNpcCreationHasRequired:
     def test_new_npc_with_all_fields(self):
         parsed = _make_parsed({"character_updates": {
             "bob-the-guard": {
-                "name": "Bob the Guard", "personality": "stern",
+                "name": "Bob the Guard", "age": "30s", "gender": "cis-male",
+                "personality": "stern",
                 "background": "ex-soldier", "appearance": "tall, scarred",
                 "speech_style": "Speaks in short, clipped sentences.",
                 "location": "main-gate", "current_status": "on-duty",

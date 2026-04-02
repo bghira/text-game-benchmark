@@ -538,3 +538,60 @@ def check_narration_no_logistics_after_emotion(
         ),
         category="narrative",
     )
+
+
+# ── Filing-cabinet phrasing ban ──────────────────────────
+
+_FILING_CABINET_PATTERNS = [
+    r"(?i)\bfil(?:e[ds]?|ing)\s+(?:that|this|it|the\s+\w+)\s+(?:away|for\s+later|in\s+(?:her|his|their)\s+(?:mind|memory|mental))\b",
+    r"(?i)\bstor(?:e[ds]?|ing)\s+(?:that|this|it|the\s+\w+)\s+(?:away|for\s+later)\b",
+    r"(?i)\btuck(?:s|ed|ing)?\s+(?:that|this|it|the\s+\w+)\s+away\s+(?:for|in\s+(?:her|his|their))\b",
+    r"(?i)\bcatalog(?:u?e[ds]?|u?ing)?\s+(?:that|this|it|the\s+\w+)\s+(?:mentally|in\s+(?:her|his|their)\s+mind)\b",
+    r"(?i)\bfil(?:e[ds]?|ing)\s+(?:facts?|information|detail|data)\b",
+    r"(?i)\bment(?:al(?:ly)?\s+)?not(?:e[ds]?|ing)\s+(?:that|this|it)\b",
+    r"(?i)\badd(?:s|ed|ing)?\s+(?:that|this|it)\s+to\s+(?:her|his|their)\s+mental\b",
+    r"(?i)\bprocess(?:es|ed|ing)?\s+(?:the|this|that)\s+(?:new\s+)?(?:information|data|intel|detail)\b",
+]
+
+
+def check_narration_no_filing_cabinet(
+    parsed: ParsedResponse,
+    scenario: Scenario,
+    turn: TurnSpec,
+    state: AccumulatedState,
+    params: dict[str, Any],
+) -> CheckResult:
+    """Check that narration avoids filing-cabinet phrasing for character reactions.
+
+    Engine BAN: Characters should not 'file facts away', 'store that for later',
+    or otherwise process new information like clerks or databases. If someone
+    registers something important, describe a fresher concrete reaction instead.
+    """
+    narration = parsed.parsed_json.get("narration", "")
+    if not isinstance(narration, str) or not narration.strip():
+        return CheckResult(
+            check_id="narration_no_filing_cabinet",
+            passed=True,
+            detail="No narration to check",
+            category="narrative",
+        )
+
+    hits: list[str] = []
+    for pattern in _FILING_CABINET_PATTERNS:
+        match = re.search(pattern, narration)
+        if match:
+            hits.append(match.group())
+
+    if hits:
+        return CheckResult(
+            check_id="narration_no_filing_cabinet",
+            passed=False,
+            detail=f"Filing-cabinet phrasing detected: {hits}",
+            category="narrative",
+        )
+    return CheckResult(
+        check_id="narration_no_filing_cabinet",
+        passed=True,
+        detail="No filing-cabinet phrasing",
+        category="narrative",
+    )

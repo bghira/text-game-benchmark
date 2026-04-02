@@ -12,12 +12,13 @@ from tgb.response_parser import ParsedResponse
 
 SLUG_PATTERN = re.compile(r"^[a-z][a-z0-9]*(-[a-z0-9]+)*$")
 
-IMMUTABLE_FIELDS = {"name", "personality", "background", "appearance", "speech_style"}
+IMMUTABLE_FIELDS = {"name", "age", "gender", "personality", "background", "appearance", "speech_style"}
 
 # Fields that can be changed after creation
 MUTABLE_FIELDS = {
     "location", "current_status", "allegiance", "relationship",
     "relationships", "literary_style", "deceased_reason",
+    "evolving_personality",
 }
 
 # Required fields when creating a new NPC
@@ -25,8 +26,8 @@ MUTABLE_FIELDS = {
 # background, appearance, speech_style, location, current_status,
 # allegiance, relationship."
 CREATION_REQUIRED_FIELDS = {
-    "name", "personality", "background", "appearance", "speech_style",
-    "location", "current_status", "allegiance", "relationship",
+    "name", "age", "gender", "personality", "background", "appearance",
+    "speech_style", "location", "current_status", "allegiance", "relationship",
 }
 
 # All valid fields for character_updates entries
@@ -319,5 +320,72 @@ def check_npc_relationships_valid(
         check_id="npc_relationships_valid",
         passed=True,
         detail="All relationships fields valid",
+        category="npc",
+    )
+
+
+# Gender values suggested by the engine system prompt
+VALID_GENDER_VALUES = {
+    "cis-male", "cis-female", "trans-male", "trans-female",
+    "nonbinary", "synthetic",
+    # Common abbreviations the engine accepts
+    "male", "female",
+}
+
+
+def check_npc_gender_format_valid(
+    parsed: ParsedResponse,
+    scenario: Scenario,
+    turn: TurnSpec,
+    state: AccumulatedState,
+    params: dict[str, Any],
+) -> CheckResult:
+    """Check that gender field uses a precise diegetic identity label.
+
+    Engine expects: cis-male, cis-female, trans-male, trans-female,
+    nonbinary, synthetic, or another precise diegetic category.
+    Rejects vague values like "unknown", empty strings, or non-string types.
+    """
+    char_updates = parsed.parsed_json.get("character_updates")
+    if not isinstance(char_updates, dict) or not char_updates:
+        return CheckResult(
+            check_id="npc_gender_format_valid",
+            passed=True,
+            detail="No character_updates",
+            category="npc",
+        )
+
+    issues: list[str] = []
+    for slug, data in char_updates.items():
+        if not isinstance(data, dict):
+            continue
+        gender = data.get("gender")
+        if gender is None:
+            continue
+        if not isinstance(gender, str):
+            issues.append(f"{slug}.gender is {type(gender).__name__}, expected string")
+            continue
+        if not gender.strip():
+            issues.append(f"{slug}.gender is empty")
+            continue
+        normalized = gender.strip().lower()
+        # Allow known values plus any non-trivial diegetic label
+        if normalized in ("unknown", "n/a", "none", "other"):
+            issues.append(
+                f"{slug}.gender '{gender}' is too vague — use a precise diegetic label "
+                f"(e.g., cis-male, cis-female, nonbinary, synthetic)"
+            )
+
+    if issues:
+        return CheckResult(
+            check_id="npc_gender_format_valid",
+            passed=False,
+            detail="; ".join(issues[:5]),
+            category="npc",
+        )
+    return CheckResult(
+        check_id="npc_gender_format_valid",
+        passed=True,
+        detail="All gender fields use valid format",
         category="npc",
     )

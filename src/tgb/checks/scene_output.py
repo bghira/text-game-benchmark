@@ -19,7 +19,7 @@ BEAT_VALID_FIELDS = BEAT_REQUIRED_FIELDS | BEAT_OPTIONAL_FIELDS
 
 BEAT_VISIBILITY_VALUES = {"public", "local", "private", "limited"}
 BEAT_TYPE_VALUES = {
-    "narration", "dialogue", "player_action", "action",
+    "narration", "dialogue", "npc_dialogue", "player_action", "action",
     "internal", "transition", "description", "system",
 }
 
@@ -181,5 +181,72 @@ def check_scene_output_npc_slugs_known(
         check_id="scene_output_npc_slugs_known",
         passed=True,
         detail="All aware_npc_slugs in beats reference known NPCs",
+        category="scene_output",
+    )
+
+
+import re
+
+# Pattern detecting quoted dialogue in beat text
+_QUOTED_DIALOGUE_RE = re.compile(
+    r"""(?:^|(?<=\s))[""\u201c](?:[^""\u201d]){4,}[""\u201d]"""
+)
+
+
+def check_beat_narration_no_dialogue(
+    parsed: ParsedResponse,
+    scenario: Scenario,
+    turn: TurnSpec,
+    state: AccumulatedState,
+    params: dict[str, Any],
+) -> CheckResult:
+    """Check that narration-type beats don't contain NPC dialogue.
+
+    Engine rule (commit bbf3799): narrator beats describe environment and
+    scene-setting only. NPC speech must use npc_dialogue or dialogue type.
+    """
+    so = parsed.parsed_json.get("scene_output")
+    if not isinstance(so, dict):
+        return CheckResult(
+            check_id="beat_narration_no_dialogue",
+            passed=True,
+            detail="No scene_output",
+            category="scene_output",
+        )
+
+    beats = so.get("beats")
+    if not isinstance(beats, list):
+        return CheckResult(
+            check_id="beat_narration_no_dialogue",
+            passed=True,
+            detail="No beats in scene_output",
+            category="scene_output",
+        )
+
+    issues: list[str] = []
+    for i, beat in enumerate(beats):
+        if not isinstance(beat, dict):
+            continue
+        beat_type = beat.get("type")
+        if beat_type != "narration":
+            continue
+        text = beat.get("text", "")
+        if not isinstance(text, str):
+            continue
+        if _QUOTED_DIALOGUE_RE.search(text):
+            snippet = text[:80].replace("\n", " ")
+            issues.append(f"beats[{i}] narration contains quoted dialogue: '{snippet}...'")
+
+    if issues:
+        return CheckResult(
+            check_id="beat_narration_no_dialogue",
+            passed=False,
+            detail="; ".join(issues[:3]),
+            category="scene_output",
+        )
+    return CheckResult(
+        check_id="beat_narration_no_dialogue",
+        passed=True,
+        detail="No dialogue in narration beats",
         category="scene_output",
     )
