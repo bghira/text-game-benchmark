@@ -180,14 +180,12 @@ class AccumulatedState:
         if isinstance(story_prog, dict):
             self.campaign_state["_last_story_progression"] = dict(story_prog)
 
-        # Track inline tool_calls array (sms_write/sms_schedule side-effects)
+        # Track inline tool_calls array (apply side-effects via _apply_tool_call)
         inline_tool_calls = parsed_json.get("tool_calls")
         if isinstance(inline_tool_calls, list):
             for tc in inline_tool_calls:
-                if isinstance(tc, dict):
-                    tc_tool = tc.get("tool_call", "")
-                    if tc_tool in ("sms_write", "sms_schedule"):
-                        self._apply_sms_write(tc)
+                if isinstance(tc, dict) and tc.get("tool_call"):
+                    self._apply_inline_tool_call(tc)
 
         # Track co-located player slugs
         co_located = parsed_json.get("co_located_player_slugs")
@@ -329,6 +327,26 @@ class AccumulatedState:
             if isinstance(removes, list):
                 for cid in removes:
                     self.consequences.pop(str(cid), None)
+
+    def _apply_inline_tool_call(self, tc: dict[str, Any]) -> None:
+        """Apply side-effects for an inline tool_call entry.
+
+        Routes to the appropriate handler: SMS writes go to _apply_sms_write,
+        subplot tools (plot_plan, chapter_plan) go to _apply_tool_call,
+        and the call is recorded in tool_call_history.
+        """
+        tool = tc.get("tool_call", "")
+        self.tool_call_history.append({
+            "turn": self.turn_number,
+            "tool_call": tool,
+            "data": tc,
+            "inline": True,
+        })
+        if tool in ("sms_write", "sms_schedule"):
+            self._apply_sms_write(tc)
+        elif tool in ("plot_plan", "chapter_plan"):
+            self._apply_tool_call(tc)
+        # song_search has no state side-effects to track
 
     # ── SMS tracking (mirrors engine's _sms_write) ──────────────
 

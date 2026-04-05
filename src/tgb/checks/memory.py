@@ -30,6 +30,10 @@ def check_memory_search_valid(
     - category (optional): string
     - before_lines (optional): int, 0–50
     - after_lines (optional): int, 0–50
+    - search_within (optional): string (e.g. "last_results")
+    - full_text (optional): bool
+    - keep_memory_turns (optional): list of ints (turn IDs)
+    - search_within_turn_ids (optional): list of ints (turn IDs)
     """
     if parsed.parsed_json.get("tool_call") != "memory_search":
         return CheckResult(
@@ -89,6 +93,36 @@ def check_memory_search_valid(
             issues.append(
                 f"'after_lines' {after_lines} out of range [0, {MEMORY_SEARCH_CONTEXT_LINES_MAX}]"
             )
+
+    # search_within validation (optional)
+    search_within = data.get("search_within")
+    if search_within is not None and not isinstance(search_within, str):
+        issues.append(f"'search_within' must be a string, got {type(search_within).__name__}")
+
+    # full_text validation (optional)
+    full_text = data.get("full_text")
+    if full_text is not None and not isinstance(full_text, bool):
+        issues.append(f"'full_text' must be a bool, got {type(full_text).__name__}")
+
+    # keep_memory_turns validation (optional)
+    keep_memory_turns = data.get("keep_memory_turns")
+    if keep_memory_turns is not None:
+        if not isinstance(keep_memory_turns, list):
+            issues.append(f"'keep_memory_turns' must be a list, got {type(keep_memory_turns).__name__}")
+        else:
+            for i, tid in enumerate(keep_memory_turns):
+                if isinstance(tid, bool) or not isinstance(tid, int):
+                    issues.append(f"keep_memory_turns[{i}] must be an integer")
+
+    # search_within_turn_ids validation (optional)
+    search_within_turn_ids = data.get("search_within_turn_ids")
+    if search_within_turn_ids is not None:
+        if not isinstance(search_within_turn_ids, list):
+            issues.append(f"'search_within_turn_ids' must be a list, got {type(search_within_turn_ids).__name__}")
+        else:
+            for i, tid in enumerate(search_within_turn_ids):
+                if isinstance(tid, bool) or not isinstance(tid, int):
+                    issues.append(f"search_within_turn_ids[{i}] must be an integer")
 
     if issues:
         return CheckResult(

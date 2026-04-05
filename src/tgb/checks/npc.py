@@ -324,15 +324,6 @@ def check_npc_relationships_valid(
     )
 
 
-# Gender values suggested by the engine system prompt
-VALID_GENDER_VALUES = {
-    "cis-male", "cis-female", "trans-male", "trans-female",
-    "nonbinary", "synthetic",
-    # Common abbreviations the engine accepts
-    "male", "female",
-}
-
-
 def check_npc_gender_format_valid(
     parsed: ParsedResponse,
     scenario: Scenario,

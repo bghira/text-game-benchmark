@@ -968,3 +968,188 @@ class TestLocationPriorityAliases:
         )
         assert not result.passed
         assert "bogus" in result.detail
+
+
+# ── Round 2: game_time rejects floats ─────────────────────
+
+
+class TestGameTimeRejectsFloats:
+    def test_float_day_rejected(self):
+        data = {"state_update": {"game_time": {"day": 1.5}}}
+        result = check_game_time_range_valid(
+            _make_parsed(data), _make_scenario(),
+            TurnSpec(action="test"), _make_state(), {},
+        )
+        assert not result.passed
+        assert "integer" in result.detail
+
+    def test_float_hour_rejected(self):
+        data = {"state_update": {"game_time": {"hour": 12.0}}}
+        result = check_game_time_range_valid(
+            _make_parsed(data), _make_scenario(),
+            TurnSpec(action="test"), _make_state(), {},
+        )
+        assert not result.passed
+        assert "integer" in result.detail
+
+
+# ── Round 2: inline tool_calls field validation ───────────
+
+
+class TestInlineToolCallsFieldValidation:
+    def test_sms_write_missing_thread_fails(self):
+        data = {"tool_calls": [
+            {"tool_call": "sms_write", "from": "Dale", "to": "Saul", "message": "Hi"},
+        ]}
+        result = check_inline_tool_calls_valid(
+            _make_parsed(data), _make_scenario(),
+            TurnSpec(action="test"), _make_state(), {},
+        )
+        assert not result.passed
+        assert "thread" in result.detail
+
+    def test_sms_write_extra_key_fails(self):
+        data = {"tool_calls": [
+            {"tool_call": "sms_write", "thread": "saul", "from": "Dale",
+             "to": "Saul", "message": "Hi", "bogus": True},
+        ]}
+        result = check_inline_tool_calls_valid(
+            _make_parsed(data), _make_scenario(),
+            TurnSpec(action="test"), _make_state(), {},
+        )
+        assert not result.passed
+        assert "bogus" in result.detail
+
+    def test_chapter_plan_missing_action_fails(self):
+        data = {"tool_calls": [
+            {"tool_call": "chapter_plan", "to_scene": "act-2"},
+        ]}
+        result = check_inline_tool_calls_valid(
+            _make_parsed(data), _make_scenario(),
+            TurnSpec(action="test"), _make_state(), {},
+        )
+        assert not result.passed
+        assert "action" in result.detail
+
+    def test_song_search_valid_with_optional(self):
+        data = {"tool_calls": [
+            {"tool_call": "song_search", "query": "hallelujah", "sender": "Elara"},
+        ]}
+        result = check_inline_tool_calls_valid(
+            _make_parsed(data), _make_scenario(),
+            TurnSpec(action="test"), _make_state(), {},
+        )
+        assert result.passed
+
+
+# ── Round 2: memory_search new field validation ───────────
+
+
+class TestMemorySearchNewFieldValidation:
+    def _make_tool_parsed(self, data):
+        return ParsedResponse(raw=json.dumps(data), parsed_json=data, is_tool_call=True)
+
+    def test_search_within_non_string_fails(self):
+        from tgb.checks.memory import check_memory_search_valid
+        data = {"tool_call": "memory_search", "queries": ["test"], "search_within": 123}
+        result = check_memory_search_valid(
+            self._make_tool_parsed(data), _make_scenario(),
+            TurnSpec(action="test"), _make_state(), {},
+        )
+        assert not result.passed
+        assert "search_within" in result.detail
+
+    def test_full_text_non_bool_fails(self):
+        from tgb.checks.memory import check_memory_search_valid
+        data = {"tool_call": "memory_search", "queries": ["test"], "full_text": "yes"}
+        result = check_memory_search_valid(
+            self._make_tool_parsed(data), _make_scenario(),
+            TurnSpec(action="test"), _make_state(), {},
+        )
+        assert not result.passed
+        assert "full_text" in result.detail
+
+    def test_keep_memory_turns_non_list_fails(self):
+        from tgb.checks.memory import check_memory_search_valid
+        data = {"tool_call": "memory_search", "queries": ["test"], "keep_memory_turns": 5}
+        result = check_memory_search_valid(
+            self._make_tool_parsed(data), _make_scenario(),
+            TurnSpec(action="test"), _make_state(), {},
+        )
+        assert not result.passed
+        assert "keep_memory_turns" in result.detail
+
+    def test_search_within_turn_ids_with_non_int_fails(self):
+        from tgb.checks.memory import check_memory_search_valid
+        data = {"tool_call": "memory_search", "queries": ["test"], "search_within_turn_ids": ["abc"]}
+        result = check_memory_search_valid(
+            self._make_tool_parsed(data), _make_scenario(),
+            TurnSpec(action="test"), _make_state(), {},
+        )
+        assert not result.passed
+        assert "search_within_turn_ids" in result.detail
+
+    def test_valid_new_fields_pass(self):
+        from tgb.checks.memory import check_memory_search_valid
+        data = {
+            "tool_call": "memory_search", "queries": ["test"],
+            "search_within": "last_results", "full_text": True,
+            "keep_memory_turns": [1, 5], "search_within_turn_ids": [10],
+        }
+        result = check_memory_search_valid(
+            self._make_tool_parsed(data), _make_scenario(),
+            TurnSpec(action="test"), _make_state(), {},
+        )
+        assert result.passed
+
+
+# ── Round 2: prompt_builder inline tool_call routing ──────
+
+
+class TestPromptBuilderInlineToolCallRouting:
+    def test_inline_plot_plan_tracked(self):
+        scenario = _make_scenario()
+        state = AccumulatedState(scenario)
+        state.apply({
+            "narration": "The plan takes shape.",
+            "tool_calls": [
+                {"tool_call": "plot_plan", "plans": [
+                    {"thread": "heist", "status": "active", "setup": "planning phase"},
+                ]},
+            ],
+        })
+        assert "heist" in state.plot_threads
+        assert state.plot_threads["heist"]["status"] == "active"
+
+    def test_inline_chapter_plan_tracked(self):
+        scenario = _make_scenario()
+        state = AccumulatedState(scenario)
+        # First create a chapter
+        state.apply({
+            "tool_call": "chapter_plan",
+            "action": "create",
+            "chapter": {"slug": "act-1", "title": "Act One"},
+        })
+        # Then advance via inline
+        state.apply({
+            "narration": "The scene shifts.",
+            "tool_calls": [
+                {"tool_call": "chapter_plan", "action": "advance_scene",
+                 "chapter": "act-1", "to_scene": "scene-2"},
+            ],
+        })
+        assert state.chapters["act-1"]["current_scene"] == "scene-2"
+
+    def test_inline_tool_calls_in_history(self):
+        scenario = _make_scenario()
+        state = AccumulatedState(scenario)
+        state.apply({
+            "narration": "Sent a message.",
+            "tool_calls": [
+                {"tool_call": "sms_write", "thread": "saul", "from": "Dale",
+                 "to": "Saul", "message": "Hello"},
+            ],
+        })
+        inline_entries = [e for e in state.tool_call_history if e.get("inline")]
+        assert len(inline_entries) == 1
+        assert inline_entries[0]["tool_call"] == "sms_write"

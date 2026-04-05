@@ -275,24 +275,24 @@ def check_game_time_range_valid(
 
     day = game_time.get("day")
     if day is not None:
-        if not isinstance(day, (int, float)) or isinstance(day, bool):
+        if not isinstance(day, int) or isinstance(day, bool):
             issues.append(f"day must be an integer, got {type(day).__name__}")
-        elif int(day) < 1:
-            issues.append(f"day={int(day)} is less than 1")
+        elif day < 1:
+            issues.append(f"day={day} is less than 1")
 
     hour = game_time.get("hour")
     if hour is not None:
-        if not isinstance(hour, (int, float)) or isinstance(hour, bool):
+        if not isinstance(hour, int) or isinstance(hour, bool):
             issues.append(f"hour must be an integer, got {type(hour).__name__}")
-        elif int(hour) < 0 or int(hour) > 23:
-            issues.append(f"hour={int(hour)} out of range [0, 23]")
+        elif hour < 0 or hour > 23:
+            issues.append(f"hour={hour} out of range [0, 23]")
 
     minute = game_time.get("minute")
     if minute is not None:
-        if not isinstance(minute, (int, float)) or isinstance(minute, bool):
+        if not isinstance(minute, int) or isinstance(minute, bool):
             issues.append(f"minute must be an integer, got {type(minute).__name__}")
-        elif int(minute) < 0 or int(minute) > 59:
-            issues.append(f"minute={int(minute)} out of range [0, 59]")
+        elif minute < 0 or minute > 59:
+            issues.append(f"minute={minute} out of range [0, 59]")
 
     if issues:
         return CheckResult(
