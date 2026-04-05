@@ -234,6 +234,81 @@ def check_game_time_advanced(
     )
 
 
+def check_game_time_range_valid(
+    parsed: ParsedResponse,
+    scenario: Scenario,
+    turn: TurnSpec,
+    state: AccumulatedState,
+    params: dict[str, Any],
+) -> CheckResult:
+    """Check that game_time fields are in valid ranges.
+
+    Engine enforces: day >= 1, hour 0-23, minute 0-59.
+    """
+    if parsed.is_tool_call:
+        return CheckResult(
+            check_id="game_time_range_valid",
+            passed=True,
+            detail="Tool call — range check skipped",
+            category="state_mgmt",
+        )
+
+    state_update = parsed.parsed_json.get("state_update")
+    if not isinstance(state_update, dict):
+        return CheckResult(
+            check_id="game_time_range_valid",
+            passed=True,
+            detail="No state_update",
+            category="state_mgmt",
+        )
+
+    game_time = state_update.get("game_time")
+    if not isinstance(game_time, dict):
+        return CheckResult(
+            check_id="game_time_range_valid",
+            passed=True,
+            detail="No game_time dict in state_update",
+            category="state_mgmt",
+        )
+
+    issues: list[str] = []
+
+    day = game_time.get("day")
+    if day is not None:
+        if not isinstance(day, int) or isinstance(day, bool):
+            issues.append(f"day must be an integer, got {type(day).__name__}")
+        elif day < 1:
+            issues.append(f"day={day} is less than 1")
+
+    hour = game_time.get("hour")
+    if hour is not None:
+        if not isinstance(hour, int) or isinstance(hour, bool):
+            issues.append(f"hour must be an integer, got {type(hour).__name__}")
+        elif hour < 0 or hour > 23:
+            issues.append(f"hour={hour} out of range [0, 23]")
+
+    minute = game_time.get("minute")
+    if minute is not None:
+        if not isinstance(minute, int) or isinstance(minute, bool):
+            issues.append(f"minute must be an integer, got {type(minute).__name__}")
+        elif minute < 0 or minute > 59:
+            issues.append(f"minute={minute} out of range [0, 59]")
+
+    if issues:
+        return CheckResult(
+            check_id="game_time_range_valid",
+            passed=False,
+            detail="; ".join(issues),
+            category="state_mgmt",
+        )
+    return CheckResult(
+        check_id="game_time_range_valid",
+        passed=True,
+        detail=f"game_time ranges valid: {game_time}",
+        category="state_mgmt",
+    )
+
+
 def check_state_no_character_removal(
     parsed: ParsedResponse,
     scenario: Scenario,
@@ -557,5 +632,79 @@ def check_party_status_valid(
         check_id="party_status_valid",
         passed=True,
         detail=f"party_status='{status}' valid",
+        category="state_mgmt",
+    )
+
+
+STORY_PROGRESSION_TARGETS = {"hold", "next-scene", "next-chapter"}
+
+
+def check_story_progression_valid(
+    parsed: ParsedResponse,
+    scenario: Scenario,
+    turn: TurnSpec,
+    state: AccumulatedState,
+    params: dict[str, Any],
+) -> CheckResult:
+    """Validate story_progression field structure.
+
+    Engine expects (on_rails campaigns only):
+    - advance: bool
+    - target: "hold" | "next-scene" | "next-chapter"
+    - reason: string
+    """
+    prog = parsed.parsed_json.get("story_progression")
+    if prog is None:
+        return CheckResult(
+            check_id="story_progression_valid",
+            passed=True,
+            detail="No story_progression field, skipped",
+            category="state_mgmt",
+        )
+
+    if not isinstance(prog, dict):
+        return CheckResult(
+            check_id="story_progression_valid",
+            passed=False,
+            detail=f"story_progression must be a dict, got {type(prog).__name__}",
+            category="state_mgmt",
+        )
+
+    issues: list[str] = []
+
+    # advance validation
+    advance = prog.get("advance")
+    if advance is not None and not isinstance(advance, bool):
+        issues.append(f"'advance' must be a bool, got {type(advance).__name__}")
+
+    # target validation
+    target = prog.get("target")
+    if target is not None:
+        if not isinstance(target, str):
+            issues.append(f"'target' must be a string, got {type(target).__name__}")
+        else:
+            # Normalize underscores to hyphens (engine does this)
+            normalized = target.strip().lower().replace("_", "-")
+            if normalized not in STORY_PROGRESSION_TARGETS:
+                issues.append(
+                    f"'target' '{target}' not in {sorted(STORY_PROGRESSION_TARGETS)}"
+                )
+
+    # reason validation
+    reason = prog.get("reason")
+    if reason is not None and not isinstance(reason, str):
+        issues.append(f"'reason' must be a string, got {type(reason).__name__}")
+
+    if issues:
+        return CheckResult(
+            check_id="story_progression_valid",
+            passed=False,
+            detail="; ".join(issues),
+            category="state_mgmt",
+        )
+    return CheckResult(
+        check_id="story_progression_valid",
+        passed=True,
+        detail="story_progression valid",
         category="state_mgmt",
     )

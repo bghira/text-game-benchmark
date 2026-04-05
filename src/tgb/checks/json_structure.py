@@ -37,6 +37,11 @@ EXPECTED_TYPES: dict[str, type | tuple[type, ...]] = {
     "set_timer_interruptible": bool,
     "set_timer_interrupt_action": (str, type(None)),
     "set_timer_interrupt_scope": str,
+    "location_updates": dict,
+    "story_progression": dict,
+    "tool_calls": list,
+    "other_player_state_updates": dict,
+    "co_located_player_slugs": list,
 }
 
 

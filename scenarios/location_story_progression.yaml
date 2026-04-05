@@ -1,0 +1,83 @@
+name: location-story-progression
+description: "Tests location_updates_valid and story_progression_valid checks"
+tags: [location, state, intermediate]
+tier: intermediate
+rubrics: [voice, causality]
+
+campaign:
+  name: "The Border Crossing"
+  difficulty: normal
+  guardrails: false
+  on_rails: false
+  timed_events: false
+  memory: false
+  speed: 1.0
+  summary: >
+    A merchant named Jorin Kade approaches the border checkpoint between the
+    Kingdom of Velsar and the Free Cities. He carries trade goods and a sealed
+    letter from the Merchant Guild. The border has been tense since recent
+    skirmishes, and the guards are suspicious of everyone.
+  state:
+    setting: "Low fantasy, medieval trade routes"
+    tone: "tense, practical, grounded"
+    landmarks:
+      - "border checkpoint"
+      - "guard tower"
+      - "merchant road"
+      - "customs office"
+    main_party_location: "merchant road"
+    game_time:
+      day: 14
+      hour: 14
+      minute: 0
+      period: "afternoon"
+      date_label: "Day 14, Afternoon"
+  characters:
+    captain-aldric:
+      name: "Captain Aldric"
+      age: "40s"
+      gender: "cis-male"
+      personality: "Cautious, duty-bound, quietly fair"
+      background: "Twenty years in the border guard, promoted for reliability not ambition"
+      appearance: "Weathered face, regulation armor, grey at the temples"
+      speech_style: "Direct, military cadence. Never wastes words."
+      location: "border checkpoint"
+      current_status: "inspecting a wagon ahead in line"
+      allegiance: "Kingdom of Velsar"
+      relationship: "neutral"
+
+player:
+  user_id: 100000030
+  level: 2
+  state:
+    character_name: "Jorin Kade"
+    location: "merchant road"
+    room_title: "Merchant Road, Border Approach"
+    room_summary: "A dusty road lined with waiting carts. The checkpoint gate ahead."
+    room_description: >
+      The road narrows here to a single lane. Wagons and carts line up
+      ahead of you, waiting for inspection. The stone guard tower looms
+      over the checkpoint gate. Soldiers move along the line, checking
+      papers. Captain Aldric is at the front, waving a wagon through.
+    exits: ["approach the checkpoint", "step off the road to wait"]
+    inventory: ["trade goods", "sealed guild letter", "coin purse", "travel papers"]
+
+turns:
+  - action: "approach the checkpoint and present my travel papers to the guards"
+    action_id: approach-checkpoint
+    checks:
+      - check_id: json_valid
+      - check_id: json_keys_present
+      - check_id: json_types_correct
+      - check_id: narration_length
+      - check_id: location_updates_valid
+
+  - action: "after clearing inspection, push through the gate into the Free Cities side"
+    action_id: cross-border
+    checks:
+      - check_id: json_valid
+      - check_id: json_keys_present
+      - check_id: json_types_correct
+      - check_id: narration_length
+      - check_id: location_updates_valid
+      - check_id: story_progression_valid

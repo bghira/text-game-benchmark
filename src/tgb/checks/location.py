@@ -1,4 +1,4 @@
-"""Location checks: location_coherent (5-field room check)."""
+"""Location checks: location_coherent (5-field room check), location_updates_valid."""
 
 from __future__ import annotations
 
@@ -88,5 +88,102 @@ def check_location_coherent(
         check_id="location_coherent",
         passed=True,
         detail=f"All 5 room fields present and valid (location: {player_update['location']})",
+        category="location",
+    )
+
+
+import re
+
+LOCATION_SLUG_PATTERN = re.compile(r"^[a-z][a-z0-9]*(-[a-z0-9]+)*$")
+VALID_PRIORITY_VALUES = {"critical", "scene", "low"}
+
+# Engine normalizes these aliases to canonical values
+PRIORITY_ALIASES: dict[str, str] = {
+    "always": "critical", "sticky": "critical", "persistent": "critical",
+    "active": "scene", "local": "scene",
+    "minor": "low", "ephemeral": "low", "temporary": "low",
+}
+
+
+def check_location_updates_valid(
+    parsed: ParsedResponse,
+    scenario: Scenario,
+    turn: TurnSpec,
+    state: AccumulatedState,
+    params: dict[str, Any],
+) -> CheckResult:
+    """Validate location_updates field structure.
+
+    Engine expects:
+    - Dict keyed by stable location slugs (e.g. "hotel-lobby")
+    - Each value is a dict of location facts
+    - Facts can be plain values or priority-wrapped: {"value": "...", "priority": "critical"}
+    - null/remove/delete values signal deletion
+    """
+    updates = parsed.parsed_json.get("location_updates")
+    if updates is None:
+        return CheckResult(
+            check_id="location_updates_valid",
+            passed=True,
+            detail="No location_updates field, skipped",
+            category="location",
+        )
+
+    if not isinstance(updates, dict):
+        return CheckResult(
+            check_id="location_updates_valid",
+            passed=False,
+            detail=f"location_updates must be a dict, got {type(updates).__name__}",
+            category="location",
+        )
+
+    issues: list[str] = []
+    for slug, loc_data in updates.items():
+        if not isinstance(slug, str):
+            issues.append(f"location key {slug!r} is not a string")
+            continue
+
+        # Validate slug format (lowercase-hyphenated)
+        if not LOCATION_SLUG_PATTERN.match(slug):
+            issues.append(f"location slug '{slug}' is not lowercase-hyphenated format")
+
+        # null means deletion — ok
+        if loc_data is None:
+            continue
+
+        if not isinstance(loc_data, dict):
+            issues.append(f"location_updates['{slug}'] must be a dict, got {type(loc_data).__name__}")
+            continue
+
+        # Validate priority-wrapped fields
+        for fact_key, fact_val in loc_data.items():
+            if fact_key == "_fact_priorities_key":
+                continue  # Engine internal
+            if isinstance(fact_val, dict):
+                # Priority-wrapped value
+                if "value" not in fact_val:
+                    issues.append(
+                        f"location_updates['{slug}'].{fact_key} is a dict but missing 'value' key"
+                    )
+                priority = fact_val.get("priority")
+                if priority is not None:
+                    # Accept canonical values and known aliases
+                    if priority not in VALID_PRIORITY_VALUES and priority not in PRIORITY_ALIASES:
+                        issues.append(
+                            f"location_updates['{slug}'].{fact_key} priority '{priority}' "
+                            f"not in {VALID_PRIORITY_VALUES} or known aliases"
+                        )
+
+    if issues:
+        return CheckResult(
+            check_id="location_updates_valid",
+            passed=False,
+            detail="; ".join(issues[:5]),
+            category="location",
+        )
+    return CheckResult(
+        check_id="location_updates_valid",
+        passed=True,
+        detail=f"location_updates valid ({len(updates)} locations)",
         category="location",
     )

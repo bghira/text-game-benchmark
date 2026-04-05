@@ -20,7 +20,14 @@ import re
 from typing import Any
 
 from tgb.checks.base import CheckResult
-from tgb.checks.limits import SMS_FIELD_MAX_CHARS, SMS_MESSAGE_MAX_CHARS, SMS_DELAY_MIN, SMS_DELAY_MAX
+from tgb.checks.limits import (
+    SMS_FIELD_MAX_CHARS,
+    SMS_MESSAGE_MAX_CHARS,
+    SMS_DELAY_MIN,
+    SMS_DELAY_MAX,
+    SMS_READ_LIMIT_MIN,
+    SMS_READ_LIMIT_MAX,
+)
 from tgb.config import Scenario, TurnSpec
 from tgb.prompt_builder import AccumulatedState
 from tgb.response_parser import ParsedResponse
@@ -412,5 +419,104 @@ def check_no_sms_in_wrong_era(
         check_id="no_sms_in_wrong_era",
         passed=True,
         detail="SMS usage appropriate for era",
+        category="sms",
+    )
+
+
+def check_sms_read_valid(
+    parsed: ParsedResponse,
+    scenario: Scenario,
+    turn: TurnSpec,
+    state: AccumulatedState,
+    params: dict[str, Any],
+) -> CheckResult:
+    """Validate sms_read tool call fields.
+
+    Engine expects:
+    - thread: required, non-empty string, ≤80 chars
+    - limit (optional): integer, 1–40
+    """
+    if parsed.parsed_json.get("tool_call") != "sms_read":
+        return CheckResult(
+            check_id="sms_read_valid",
+            passed=True,
+            detail="Not an sms_read tool call, skipped",
+            category="sms",
+        )
+
+    data = parsed.parsed_json
+    issues: list[str] = []
+
+    # thread validation (required)
+    thread = data.get("thread")
+    if thread is None or not isinstance(thread, str) or not thread.strip():
+        issues.append("Missing or empty 'thread' field")
+    elif len(thread) > SMS_FIELD_MAX_CHARS:
+        issues.append(f"'thread' is {len(thread)} chars (max {SMS_FIELD_MAX_CHARS})")
+
+    # limit validation (optional)
+    limit = data.get("limit")
+    if limit is not None:
+        if isinstance(limit, bool) or not isinstance(limit, int):
+            issues.append(f"'limit' must be an integer, got {type(limit).__name__}")
+        elif limit < SMS_READ_LIMIT_MIN or limit > SMS_READ_LIMIT_MAX:
+            issues.append(
+                f"'limit' {limit} out of range [{SMS_READ_LIMIT_MIN}, {SMS_READ_LIMIT_MAX}]"
+            )
+
+    if issues:
+        return CheckResult(
+            check_id="sms_read_valid",
+            passed=False,
+            detail="; ".join(issues),
+            category="sms",
+        )
+    return CheckResult(
+        check_id="sms_read_valid",
+        passed=True,
+        detail="sms_read fields valid",
+        category="sms",
+    )
+
+
+def check_sms_list_valid(
+    parsed: ParsedResponse,
+    scenario: Scenario,
+    turn: TurnSpec,
+    state: AccumulatedState,
+    params: dict[str, Any],
+) -> CheckResult:
+    """Validate sms_list tool call fields.
+
+    Engine expects:
+    - wildcard (optional): string if present
+    """
+    if parsed.parsed_json.get("tool_call") != "sms_list":
+        return CheckResult(
+            check_id="sms_list_valid",
+            passed=True,
+            detail="Not an sms_list tool call, skipped",
+            category="sms",
+        )
+
+    data = parsed.parsed_json
+    issues: list[str] = []
+
+    # wildcard validation (optional)
+    wildcard = data.get("wildcard")
+    if wildcard is not None and not isinstance(wildcard, str):
+        issues.append(f"'wildcard' must be a string, got {type(wildcard).__name__}")
+
+    if issues:
+        return CheckResult(
+            check_id="sms_list_valid",
+            passed=False,
+            detail="; ".join(issues),
+            category="sms",
+        )
+    return CheckResult(
+        check_id="sms_list_valid",
+        passed=True,
+        detail="sms_list fields valid",
         category="sms",
     )

@@ -74,8 +74,8 @@ def check_tool_format_valid(
     # Default required keys per tool type
     default_keys_map: dict[str, list[str]] = {
         "memory_search": ["queries"],
-        "memory_store": ["category", "term", "memory"],
-        "memory_terms": ["wildcard"],
+        "memory_store": ["category", "memory"],
+        "memory_terms": [],
         "memory_turn": ["turn_id"],
         "sms_write": ["thread", "from", "to", "message"],
         "sms_read": ["thread"],
@@ -90,6 +90,7 @@ def check_tool_format_valid(
         "autobiography_append": ["entries"],
         "autobiography_update": ["entries"],
         "autobiography_compress": ["character"],
+        "song_search": ["query"],
     }
 
     # Known optional keys per tool type (not required but allowed)
@@ -101,6 +102,13 @@ def check_tool_format_valid(
         "autobiography_append": set(),
         "autobiography_update": set(),
         "autobiography_compress": set(),
+        "memory_search": {"category", "before_lines", "after_lines", "search_within", "full_text", "keep_memory_turns", "search_within_turn_ids"},
+        "memory_store": {"term"},
+        "memory_terms": {"wildcard"},
+        "memory_turn": set(),
+        "sms_read": {"limit"},
+        "sms_list": {"wildcard"},
+        "song_search": {"sender", "message"},
     }
 
     required_keys = params.get("required_keys", default_keys_map.get(tool_name, []))
@@ -622,3 +630,102 @@ def check_autobiography_compress_valid(
         detail="autobiography_compress fields valid",
         category="tool_usage",
     )
+
+
+# ── Inline tool_calls array checks ─────────────────────
+
+INLINE_TOOL_CALLS_ALLOWED = {"sms_write", "sms_schedule", "plot_plan", "chapter_plan", "song_search"}
+
+
+def check_inline_tool_calls_valid(
+    parsed: ParsedResponse,
+    scenario: Scenario,
+    turn: TurnSpec,
+    state: AccumulatedState,
+    params: dict[str, Any],
+) -> CheckResult:
+    """Validate inline tool_calls array in final JSON response.
+
+    Engine allows an array of side-effect tool invocations alongside narration.
+    Only tools in INLINE_TOOL_CALLS_ALLOWED (currently: sms_write, sms_schedule,
+    plot_plan, chapter_plan, song_search) are permitted in this array.
+    Each entry must be a dict with a valid "tool_call" key and correct fields.
+    """
+    tool_calls = parsed.parsed_json.get("tool_calls")
+    if tool_calls is None:
+        return CheckResult(
+            check_id="inline_tool_calls_valid",
+            passed=True,
+            detail="No tool_calls array, skipped",
+            category="tool_usage",
+        )
+
+    if not isinstance(tool_calls, list):
+        return CheckResult(
+            check_id="inline_tool_calls_valid",
+            passed=False,
+            detail=f"tool_calls must be a list, got {type(tool_calls).__name__}",
+            category="tool_usage",
+        )
+
+    issues: list[str] = []
+    for i, tc in enumerate(tool_calls):
+        if not isinstance(tc, dict):
+            issues.append(f"tool_calls[{i}] is {type(tc).__name__}, expected dict")
+            continue
+
+        tool_name = tc.get("tool_call")
+        if not tool_name or not isinstance(tool_name, str):
+            issues.append(f"tool_calls[{i}] missing or invalid 'tool_call' key")
+            continue
+
+        if tool_name not in INLINE_TOOL_CALLS_ALLOWED:
+            issues.append(
+                f"tool_calls[{i}] tool '{tool_name}' not allowed inline "
+                f"(only {sorted(INLINE_TOOL_CALLS_ALLOWED)})"
+            )
+            continue
+
+        # Validate required fields and reject unexpected keys per tool type
+        required = _INLINE_REQUIRED.get(tool_name, [])
+        missing = [k for k in required if k not in tc]
+        if missing:
+            issues.append(f"tool_calls[{i}] '{tool_name}' missing keys: {missing}")
+
+        optional = _INLINE_OPTIONAL.get(tool_name, set())
+        allowed = {"tool_call"} | set(required) | optional
+        extra = [k for k in tc if k not in allowed]
+        if extra:
+            issues.append(f"tool_calls[{i}] '{tool_name}' unexpected keys: {extra}")
+
+    if issues:
+        return CheckResult(
+            check_id="inline_tool_calls_valid",
+            passed=False,
+            detail="; ".join(issues[:5]),
+            category="tool_usage",
+        )
+    return CheckResult(
+        check_id="inline_tool_calls_valid",
+        passed=True,
+        detail=f"tool_calls array valid ({len(tool_calls)} entries)",
+        category="tool_usage",
+    )
+
+
+# Required/optional keys for inline tool_calls, mirroring default_keys_map/tool_optional_keys
+_INLINE_REQUIRED: dict[str, list[str]] = {
+    "sms_write": ["thread", "from", "to", "message"],
+    "sms_schedule": ["thread", "from", "to", "message", "delay_seconds"],
+    "plot_plan": [],
+    "chapter_plan": ["action"],
+    "song_search": ["query"],
+}
+
+_INLINE_OPTIONAL: dict[str, set[str]] = {
+    "sms_write": set(),
+    "sms_schedule": set(),
+    "plot_plan": {"plans"},
+    "chapter_plan": {"chapter", "title", "summary", "scenes", "active", "to_scene", "resolution"},
+    "song_search": {"sender", "message"},
+}

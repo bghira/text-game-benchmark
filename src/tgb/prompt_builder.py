@@ -44,6 +44,13 @@ class AccumulatedState:
         self.npc_awareness_history: list[dict[str, Any]] = []
         # Autobiography tracking
         self.autobiography_entries: dict[str, list[dict[str, Any]]] = {}
+        # Multiplayer: other player states
+        self.other_player_states: dict[str, dict[str, Any]] = {}
+        if scenario.party:
+            for entry in scenario.party:
+                slug = entry.get("player_slug", "")
+                if slug:
+                    self.other_player_states[slug] = dict(entry)
 
     def apply(self, parsed_json: dict[str, Any] | None) -> None:
         """Apply a parsed model response to update accumulated state."""
@@ -152,6 +159,47 @@ class AccumulatedState:
                         i for i in inv
                         if not (isinstance(i, str) and i.lower() == item_lower)
                     ]
+
+        # Track location_updates
+        location_updates = parsed_json.get("location_updates")
+        if isinstance(location_updates, dict):
+            loc_store = self.campaign_state.setdefault("_location_facts", {})
+            if not isinstance(loc_store, dict):
+                loc_store = {}
+                self.campaign_state["_location_facts"] = loc_store
+            for loc_slug, loc_data in location_updates.items():
+                if loc_data is None:
+                    loc_store.pop(str(loc_slug), None)
+                elif isinstance(loc_data, dict):
+                    existing = loc_store.setdefault(str(loc_slug), {})
+                    if isinstance(existing, dict):
+                        existing.update(loc_data)
+
+        # Track story_progression
+        story_prog = parsed_json.get("story_progression")
+        if isinstance(story_prog, dict):
+            self.campaign_state["_last_story_progression"] = dict(story_prog)
+
+        # Track inline tool_calls array (apply side-effects via _apply_tool_call)
+        inline_tool_calls = parsed_json.get("tool_calls")
+        if isinstance(inline_tool_calls, list):
+            for tc in inline_tool_calls:
+                if isinstance(tc, dict) and tc.get("tool_call"):
+                    self._apply_inline_tool_call(tc)
+
+        # Track co-located player slugs
+        co_located = parsed_json.get("co_located_player_slugs")
+        if isinstance(co_located, list):
+            self.campaign_state["_co_located_player_slugs"] = co_located
+
+        # Track other player state updates
+        other_updates = parsed_json.get("other_player_state_updates")
+        if isinstance(other_updates, dict):
+            for slug, patch in other_updates.items():
+                if isinstance(patch, dict) and isinstance(slug, str):
+                    if slug not in self.other_player_states:
+                        self.other_player_states[slug] = {}
+                    self._apply_state_patch(self.other_player_states[slug], patch)
 
         # Track SMS state when sms_write/sms_schedule tool calls are made
         if tool_call in ("sms_write", "sms_schedule"):
@@ -279,6 +327,26 @@ class AccumulatedState:
             if isinstance(removes, list):
                 for cid in removes:
                     self.consequences.pop(str(cid), None)
+
+    def _apply_inline_tool_call(self, tc: dict[str, Any]) -> None:
+        """Apply side-effects for an inline tool_call entry.
+
+        Routes to the appropriate handler: SMS writes go to _apply_sms_write,
+        subplot tools (plot_plan, chapter_plan) go to _apply_tool_call,
+        and the call is recorded in tool_call_history.
+        """
+        tool = tc.get("tool_call", "")
+        self.tool_call_history.append({
+            "turn": self.turn_number,
+            "tool_call": tool,
+            "data": tc,
+            "inline": True,
+        })
+        if tool in ("sms_write", "sms_schedule"):
+            self._apply_sms_write(tc)
+        elif tool in ("plot_plan", "chapter_plan"):
+            self._apply_tool_call(tc)
+        # song_search has no state side-effects to track
 
     # ── SMS tracking (mirrors engine's _sms_write) ──────────────
 
@@ -941,7 +1009,7 @@ class PromptBuilder:
 
     # ── Memory lookup ────────────────────────────────────────────
 
-    MEMORY_LOOKUP_MIN_SUMMARY_CHARS = 200
+    MEMORY_LOOKUP_MIN_SUMMARY_CHARS = 2000
     _MEMORY_LOOKUP_MARKERS = (
         "remember", "recall", "what happened", "previously",
         "backstory", "history", "who is", "what is",

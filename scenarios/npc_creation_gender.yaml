@@ -1,0 +1,74 @@
+name: npc-creation-gender
+description: "Tests NPC creation with required age/gender fields and gender format validation"
+tags: [npc, character, intermediate]
+tier: intermediate
+rubrics: [voice, causality]
+
+campaign:
+  name: "The Night Market"
+  difficulty: normal
+  guardrails: false
+  on_rails: false
+  timed_events: false
+  memory: false
+  speed: 1.0
+  summary: >
+    A wandering herbalist named Thessa arrives at the Night Market of Calrune,
+    a sprawling bazaar that opens at dusk. She is looking for rare ingredients
+    and information about a poisoning that affected her village. The market
+    is full of strangers, and she will need to talk to vendors she has never
+    met before.
+  state:
+    setting: "Fantasy night market"
+    tone: "atmospheric, social, sensory"
+    landmarks:
+      - "night market main row"
+      - "spice stalls"
+      - "lantern square"
+      - "herbalist alley"
+    main_party_location: "night market main row"
+    game_time:
+      day: 5
+      hour: 20
+      minute: 0
+      period: "night"
+      date_label: "Day 5, Night"
+  characters: {}
+
+player:
+  user_id: 100000040
+  level: 1
+  state:
+    character_name: "Thessa"
+    location: "night market main row"
+    room_title: "Night Market, Main Row"
+    room_summary: "A bustling lane of stalls under swaying paper lanterns."
+    room_description: >
+      The main row of the Night Market stretches ahead, crowded and loud.
+      Paper lanterns hang on strings between the stall posts, casting warm
+      pools of light. The smell of grilled meat and incense mixes in the
+      air. You don't recognize anyone here — you'll need to introduce
+      yourself to the vendors.
+    exits: ["browse the spice stalls", "head to herbalist alley", "visit lantern square"]
+    inventory: ["herb pouch", "silver coins", "sample of tainted grain"]
+
+turns:
+  - action: "approach the nearest spice vendor and ask about rare herbs"
+    action_id: meet-vendor
+    checks:
+      - check_id: json_valid
+      - check_id: json_keys_present
+      - check_id: json_types_correct
+      - check_id: npc_creation_has_required
+      - check_id: npc_gender_format_valid
+      - check_id: npc_slug_valid
+
+  - action: "ask around at the herbalist alley about anyone who sells antidotes"
+    action_id: meet-herbalist
+    checks:
+      - check_id: json_valid
+      - check_id: json_keys_present
+      - check_id: json_types_correct
+      - check_id: npc_creation_has_required
+      - check_id: npc_gender_format_valid
+      - check_id: npc_slug_valid

@@ -1,0 +1,98 @@
+name: memory-search-store
+description: "Memory tool usage — validates memory_search, memory_store, and memory_terms tool calls"
+tags: [memory, tools, advanced]
+tier: advanced
+rubrics: [voice, pacing, causality]
+
+campaign:
+  name: "The Cartographer's Archive"
+  difficulty: normal
+  guardrails: false
+  on_rails: false
+  timed_events: false
+  memory: true
+  speed: 1.0
+  summary: >
+    A scholar named Elara Voss has been cataloguing lost maps and navigation charts
+    in the dusty vaults of the Great Archive of Meridian. Over the past three months,
+    she has uncovered fragments of an ancient sea route — the so-called Amber Passage —
+    that supposedly connected the northern trade cities to the spice islands without
+    rounding the perilous Cape of Storms. Her research notes are scattered across
+    dozens of journal entries and catalog cards, stored in the archive's memory system.
+    The archivist Sable Marsh has been her only companion in this work, a meticulous
+    woman who knows every shelf and index in the building. Today Elara returns to
+    the archive with a new lead: a merchant's diary found in a private collection
+    that references the Amber Passage by name.
+  state:
+    setting: "Fantasy library / archive"
+    tone: "scholarly, quiet, methodical"
+    landmarks:
+      - "great archive of meridian"
+      - "map vault"
+      - "reading room"
+      - "index hall"
+    main_party_location: "reading room"
+    game_time:
+      day: 91
+      hour: 9
+      minute: 30
+      period: "morning"
+      date_label: "Day 91, Morning"
+  characters:
+    sable-marsh:
+      name: "Sable Marsh"
+      personality: "Meticulous, patient, quietly passionate about preservation"
+      background: "Head archivist of the Great Archive of Meridian for twenty years"
+      appearance: "Grey-streaked hair in a tight bun, ink-stained fingers, reading spectacles on a chain"
+      speech_style: "Precise, unhurried. Uses full sentences. Refers to documents by catalog number."
+      location: "reading room"
+      current_status: "organizing the morning's retrieval requests"
+      allegiance: "the archive"
+      relationship: "colleague"
+
+player:
+  user_id: 100000010
+  level: 2
+  state:
+    character_name: "Elara Voss"
+    location: "reading room"
+    room_title: "The Reading Room, Great Archive"
+    room_summary: "A long hall of oak tables and brass lamps. Tall windows let in morning light."
+    room_description: >
+      The Reading Room stretches the length of the archive's east wing.
+      Oak tables stand in neat rows, each with a brass reading lamp.
+      Morning light falls through tall lancet windows, catching dust motes
+      in the air. Sable Marsh is at the front desk, sorting request slips.
+    exits: ["go to the map vault", "go to the index hall", "leave the archive"]
+    inventory: ["journal", "magnifying lens", "merchant diary fragment"]
+
+turns:
+  - action: "search my memory for any previous notes about the Amber Passage"
+    action_id: search-memory
+    checks:
+      - check_id: json_valid
+      - check_id: tool_called
+        params:
+          tool_name: memory_search
+      - check_id: tool_format_valid
+      - check_id: memory_search_valid
+
+  - action: "store a new memory cataloguing the merchant diary fragment and its reference to the Amber Passage"
+    action_id: store-memory
+    checks:
+      - check_id: json_valid
+      - check_id: tool_called
+        params:
+          tool_name: memory_store
+      - check_id: tool_format_valid
+      - check_id: memory_store_valid
+
+  - action: "browse all known memory terms to see what categories I've been tracking"
+    action_id: browse-terms
+    checks:
+      - check_id: json_valid
+      - check_id: tool_called
+        params:
+          tool_name: memory_terms
+      - check_id: tool_format_valid
+      - check_id: memory_terms_valid
